@@ -226,6 +226,13 @@ export default function AddGame() {
     }
   }, [])
 
+  // Auto-hide the success message after 2 seconds
+  useEffect(() => {
+    if (!saveSuccess) return
+    const t = setTimeout(() => setSaveSuccess(false), 2000)
+    return () => clearTimeout(t)
+  }, [saveSuccess])
+
   async function handleAddPlatform() {
     if (!newPlatformName.trim()) {
       setSaveError('Platform name is required')

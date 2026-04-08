@@ -1,0 +1,16 @@
+.container {
+  max-width: 720px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  font-family: system-ui, sans-serif;
+}
+
+.row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.label { min-width: 100px; font-weight: 600; }
+.input { padding: 0.5rem; border-radius: 6px; border: 1px solid #d1d5db; }
+.dateNav { display: flex; gap: 8px; align-items: center; }
+.smallBtn { padding: 6px 8px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
+.saveButton { padding: 0.6rem 1.2rem; background: #6366f1; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+.hint { color: #6b7280; font-size: 0.9rem; }
+.error { color: #dc2626; }
+.success { color: #16a34a; }
