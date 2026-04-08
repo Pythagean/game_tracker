@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS public.game_developer CASCADE;
+
 CREATE TABLE IF NOT EXISTS public.game_developer
 (
     game_id      INTEGER NOT NULL REFERENCES public.games (game_id) ON DELETE CASCADE,

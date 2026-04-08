@@ -3,6 +3,7 @@
   margin: 2rem auto;
   padding: 0 1rem;
   font-family: system-ui, sans-serif;
+  position: relative;
 }
 
 .row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
@@ -10,6 +11,34 @@
 .input { padding: 0.5rem; border-radius: 6px; border: 1px solid #d1d5db; }
 .dateNav { display: flex; gap: 8px; align-items: center; }
 .smallBtn { padding: 6px 8px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
+
+.coverPreview {
+  position: absolute;
+  right: 1rem;
+  top: 3.5rem;
+  width: 140px;
+  height: 190px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  border: 1px solid #e6e6e6;
+}
+
+.timeNav { display: flex; gap: 8px; align-items: center; }
+
+.durationNav { display: flex; gap: 8px; align-items: center; }
+.durationInput { width: 48px; padding: 0.4rem; border-radius: 6px; border: 1px solid #d1d5db; text-align: right }
+
+/* Hide native number input spinners — we'll use custom buttons */
+.durationInput::-webkit-outer-spin-button,
+.durationInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.durationInput {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
 .saveButton { padding: 0.6rem 1.2rem; background: #6366f1; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
 .hint { color: #6b7280; font-size: 0.9rem; }
 .error { color: #dc2626; }

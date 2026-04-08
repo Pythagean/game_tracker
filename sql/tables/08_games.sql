@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS public.games CASCADE;
+
 CREATE TABLE IF NOT EXISTS public.games
 (
     game_id          SERIAL PRIMARY KEY,

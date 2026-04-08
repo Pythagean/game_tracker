@@ -106,6 +106,28 @@ CREATE POLICY "Users can delete own sessions"
 
 
 -- ============================================================
+-- players: users can only access their own rows
+-- ============================================================
+
+CREATE POLICY "Users can select own players"
+    ON public.players FOR SELECT TO authenticated
+    USING (user_id = auth.uid());
+
+CREATE POLICY "Users can insert own players"
+    ON public.players FOR INSERT TO authenticated
+    WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can update own players"
+    ON public.players FOR UPDATE TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can delete own players"
+    ON public.players FOR DELETE TO authenticated
+    USING (user_id = auth.uid());
+
+
+-- ============================================================
 -- Junction tables: access is gated via the parent game/session
 -- ============================================================
 

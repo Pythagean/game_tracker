@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS public.session_player CASCADE;
+
 CREATE TABLE IF NOT EXISTS public.session_player
 (
     session_id INTEGER NOT NULL REFERENCES public.sessions (session_id) ON DELETE CASCADE,

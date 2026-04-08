@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS public.sessions CASCADE;
+
 CREATE TABLE IF NOT EXISTS public.sessions
 (
     session_id       SERIAL PRIMARY KEY,

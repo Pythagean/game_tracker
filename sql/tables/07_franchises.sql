@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS public.franchises CASCADE;
+
 CREATE TABLE IF NOT EXISTS public.franchises
 (
     franchise_id SERIAL PRIMARY KEY,

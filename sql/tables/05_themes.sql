@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS public.themes CASCADE;
+
 CREATE TABLE IF NOT EXISTS public.themes
 (
     theme_id SERIAL PRIMARY KEY,
