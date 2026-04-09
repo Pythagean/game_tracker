@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import styles from './AddSession.module.css'
 
@@ -17,6 +18,8 @@ export default function AddSession() {
   const [players, setPlayers] = useState<{ player_id: number; name: string }[]>([])
 
   const [selectedGameId, setSelectedGameId] = useState<number | null>(null)
+  const [showGamePicker, setShowGamePicker] = useState(false)
+  const [focusedGameIndex, setFocusedGameIndex] = useState<number | null>(null)
   const [selectedPlatformId, setSelectedPlatformId] = useState<number | null>(null)
   const [gameMode, setGameMode] = useState<string>('Singleplayer')
   const [controllerStyle, setControllerStyle] = useState<string>('Controller')
@@ -47,7 +50,31 @@ export default function AddSession() {
         .eq('user_id', userId)
         .order('title')
       if (!mounted) return
-      setGames((g as any) || [])
+
+      // fetch user's sessions to determine last-played per game
+      const { data: sessions } = await supabase
+        .from('sessions')
+        .select('game_id, start_date, start_time')
+        .eq('user_id', userId)
+
+      const lastPlayedMap: Record<number, number> = {}
+      ;((sessions as any[]) || []).forEach((s) => {
+        if (!s?.game_id || !s?.start_date) return
+        const timePart = s.start_time ?? '00:00:00'
+        const ts = new Date(`${s.start_date}T${timePart}`).getTime()
+        const gid = Number(s.game_id)
+        if (!lastPlayedMap[gid] || ts > lastPlayedMap[gid]) lastPlayedMap[gid] = ts
+      })
+
+      const gamesList = (g as any) || []
+      gamesList.sort((a: any, b: any) => {
+        const la = lastPlayedMap[a.game_id] ?? 0
+        const lb = lastPlayedMap[b.game_id] ?? 0
+        if (la === lb) return String(a.title).localeCompare(String(b.title))
+        return lb - la
+      })
+
+      setGames(gamesList)
 
       const { data: p } = await supabase.from('platforms').select('platform_id, name').order('name')
       if (!mounted) return
@@ -59,6 +86,30 @@ export default function AddSession() {
     })()
     return () => { mounted = false }
   }, [])
+
+  // close game picker when clicking outside
+  const pickerRef = useRef<HTMLDivElement | null>(null)
+  const gameListRef = useRef<HTMLDivElement | null>(null)
+  const navigate = useNavigate()
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!pickerRef.current) return
+      if (!pickerRef.current.contains(e.target as Node)) setShowGamePicker(false)
+    }
+    document.addEventListener('click', onDoc)
+    return () => document.removeEventListener('click', onDoc)
+  }, [])
+
+  useEffect(() => {
+    if (!showGamePicker) return
+    // default focused index when opening
+    const idx = selectedGameId ? games.findIndex(g => g.game_id === selectedGameId) : 0
+    setFocusedGameIndex(idx >= 0 ? idx : 0)
+    // move keyboard focus into the list so it receives arrow keys
+    setTimeout(() => {
+      gameListRef.current?.focus()
+    }, 0)
+  }, [showGamePicker, selectedGameId, games])
 
   function changeDateBy(days: number) {
     const d = new Date(date)
@@ -72,6 +123,19 @@ export default function AddSession() {
     dt.setHours(hh, mm, 0, 0)
     dt.setHours(dt.getHours() + hours)
     // keep minutes aligned to 15
+    const mins = Math.round(dt.getMinutes() / 15) * 15
+    dt.setMinutes(mins)
+    const hhStr = String(dt.getHours()).padStart(2, '0')
+    const mmStr = String(dt.getMinutes()).padStart(2, '0')
+    setTime(`${hhStr}:${mmStr}`)
+  }
+
+  function changeTimeByMinutes(deltaMinutes: number) {
+    const [hh, mm] = time.split(':').map(Number)
+    const dt = new Date()
+    dt.setHours(hh, mm, 0, 0)
+    dt.setMinutes(dt.getMinutes() + deltaMinutes)
+    // snap to 15-minute increments
     const mins = Math.round(dt.getMinutes() / 15) * 15
     dt.setMinutes(mins)
     const hhStr = String(dt.getHours()).padStart(2, '0')
@@ -179,26 +243,81 @@ export default function AddSession() {
     <div className={styles.container}>
       <h1>Add Session</h1>
 
-      <div className={styles.row}>
+      <div className={`${styles.row} ${styles.pickerRow}`} ref={pickerRef}>
         <div className={styles.label}>Game</div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1 }}>
-          <select className={styles.input} value={selectedGameId ?? ''} onChange={(e) => setSelectedGameId(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">Select game...</option>
-            {games.map(g => <option key={g.game_id} value={g.game_id}>{g.title}</option>)}
-          </select>
+          <button
+            type="button"
+            className={styles.gamePickerButton}
+            onClick={() => setShowGamePicker(v => !v)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown') { e.preventDefault(); setShowGamePicker(true); setFocusedGameIndex(0) }
+              if (e.key === 'ArrowUp') { e.preventDefault(); setShowGamePicker(true); setFocusedGameIndex(games.length - 1) }
+              if (e.key === 'Escape') { setShowGamePicker(false) }
+            }}
+            aria-haspopup="listbox"
+            aria-expanded={showGamePicker}
+          >
+            {selectedGameId ? (
+              (() => {
+                const g = games.find(x => x.game_id === selectedGameId)
+                return g ? (
+                  <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+                    {g.cover_url ? <img src={g.cover_url.replace(/^\/\//, 'https://')} alt="thumb" className={styles.thumbSmall} /> : null}
+                    <span>{g.title}</span>
+                  </span>
+                ) : 'Select game...'
+              })()
+            ) : 'Select game...'}
+            <span style={{ marginLeft: 8, opacity: 0.7 }}>▾</span>
+          </button>
+
+          {showGamePicker && (
+            <div
+              ref={gameListRef}
+              className={styles.gameList}
+              role="listbox"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault()
+                  setFocusedGameIndex((prev) => (prev === null ? 0 : Math.min((games.length - 1), prev + 1)))
+                  return
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  setFocusedGameIndex((prev) => (prev === null ? 0 : Math.max(0, prev - 1)))
+                  return
+                }
+                if (e.key === 'Enter' && focusedGameIndex !== null) {
+                  const sel = games[focusedGameIndex]
+                  if (sel) { setSelectedGameId(sel.game_id); setShowGamePicker(false) }
+                }
+                if (e.key === 'Escape') setShowGamePicker(false)
+              }}
+            >
+              {games.map((g, i) => (
+                <div
+                  key={g.game_id}
+                  className={styles.gameItem + (focusedGameIndex === i ? ` ${styles.gameItemFocused}` : '')}
+                  role="option"
+                  aria-selected={selectedGameId === g.game_id}
+                  onClick={() => { setSelectedGameId(g.game_id); setShowGamePicker(false) }}
+                  onMouseEnter={() => setFocusedGameIndex(i)}
+                >
+                  {g.cover_url ? <img src={g.cover_url.replace(/^\/\//, 'https://')} alt="cover" className={styles.thumbSmall} /> : <div className={styles.thumbPlaceholder} />}
+                  <div style={{ marginLeft: 8 }}>{g.title}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Add Game quick link */}
+          <button type="button" className={styles.addGameBtn} onClick={() => navigate('/add-game')}>Add a New Game</button>
         </div>
       </div>
 
-      {/* large cover preview (absolute, doesn't push layout) */}
-      {selectedGameId && (() => {
-        const g = games.find(x => x.game_id === selectedGameId)
-        if (g?.cover_url) {
-          const url = g.cover_url.replace(/^\/\//, 'https://')
-          return <img className={styles.coverPreview} src={url} alt="cover" />
-        }
-        return null
-      })()}
-
+      <div className={styles.formWithCover}>
+        <div className={styles.formLeft}>
       <div className={styles.row}>
         <div className={styles.label}>Platform</div>
         <select className={styles.input} value={selectedPlatformId ?? ''} onChange={(e) => setSelectedPlatformId(e.target.value ? Number(e.target.value) : null)}>
@@ -262,9 +381,9 @@ export default function AddSession() {
       <div className={styles.row}>
         <div className={styles.label}>Start time</div>
         <div className={styles.timeNav}>
-          <button className={styles.smallBtn} onClick={() => changeTimeBy(-1)} aria-label="Decrease time by 1 hour">‹</button>
+          <button className={styles.smallBtn} onClick={() => changeTimeByMinutes(-15)} aria-label="Decrease time by 15 minutes">‹</button>
           <input type="time" step={900} className={styles.input} value={time} onChange={handleTimeChange} />
-          <button className={styles.smallBtn} onClick={() => changeTimeBy(1)} aria-label="Increase time by 1 hour">›</button>
+          <button className={styles.smallBtn} onClick={() => changeTimeByMinutes(15)} aria-label="Increase time by 15 minutes">›</button>
         </div>
       </div>
 
@@ -290,6 +409,19 @@ export default function AddSession() {
         <button className={styles.saveButton} onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save session'}</button>
         {error && <div className={styles.error} style={{ marginTop: 8 }}>{error}</div>}
         {success && <div className={styles.success} style={{ marginTop: 8 }}>Session added</div>}
+      </div>
+        </div>
+        {/* cover column: shown to the right of Platform+ fields, under the Game picker */}
+        <div className={styles.coverColumn} aria-hidden={!selectedGameId}>
+          {selectedGameId && (() => {
+            const g = games.find(x => x.game_id === selectedGameId)
+            if (g?.cover_url) {
+              const url = g.cover_url.replace(/^\/\//, 'https://')
+              return <img className={styles.coverPreview} src={url} alt="cover" />
+            }
+            return null
+          })()}
+        </div>
       </div>
     </div>
   )

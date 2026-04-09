@@ -121,7 +121,7 @@ export default function AddGame() {
           title: selected.name,
           igdb_id: selected.id,
           release_date: releaseDate?.toISOString().split('T')[0] ?? null,
-          metacritic_score: null,
+          metacritic_score: selected.aggregated_rating ? Math.round(selected.aggregated_rating) : null,
           cover_url: coverUrl,
           publisher_id: publisherId,
           franchise_id: franchiseId,

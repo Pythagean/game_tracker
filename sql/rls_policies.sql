@@ -2,12 +2,6 @@
 -- Add user_id to user-owned tables
 -- ============================================================
 
-ALTER TABLE public.games
-    ADD COLUMN user_id UUID NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE;
-
-ALTER TABLE public.sessions
-    ADD COLUMN user_id UUID NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE;
-
 
 -- ============================================================
 -- Enable RLS on all tables

@@ -27,11 +27,12 @@ export default function App() {
     <BrowserRouter>
       <nav style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #e2e8f0', fontFamily: 'system-ui, sans-serif', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <Link to="/add-game" style={{ textDecoration: 'none', fontWeight: 600, color: '#6366f1' }}>
-            + Add Game
-          </Link>
+          
           <Link to="/add-session" style={{ textDecoration: 'none', fontWeight: 600, color: '#6366f1' }}>
             + Add Session
+          </Link>
+          <Link to="/add-game" style={{ textDecoration: 'none', fontWeight: 600, color: '#6366f1' }}>
+            + Add Game
           </Link>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>

@@ -12,10 +12,22 @@
 .dateNav { display: flex; gap: 8px; align-items: center; }
 .smallBtn { padding: 6px 8px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
 
+.formWithCover {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.formLeft { flex: 0.8; min-width: 0; }
+
+.coverColumn {
+  width: 160px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
 .coverPreview {
-  position: absolute;
-  right: 1rem;
-  top: 3.5rem;
   width: 140px;
   height: 190px;
   object-fit: cover;
@@ -25,6 +37,50 @@
 }
 
 .timeNav { display: flex; gap: 8px; align-items: center; }
+
+.gamePickerButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  cursor: pointer;
+}
+
+.addGameBtn {
+  margin-left: 8px;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #f8fafc;
+  color: #374151;
+  cursor: pointer;
+}
+
+.gameList {
+  position: absolute;
+  left: 120px;
+  top: calc(100% + 6px);
+  width: min(560px, 100%);
+  max-height: 240px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 30;
+  padding: 8px;
+}
+
+.pickerRow { position: relative }
+
+.gameItem { display: flex; align-items: center; padding: 6px; gap: 8px; cursor: pointer; border-radius: 6px }
+.gameItem:hover { background: #f3f4f6 }
+.thumbSmall { width: 36px; height: 48px; object-fit: cover; border-radius: 4px }
+.thumbPlaceholder { width: 36px; height: 48px; background: #f3f4f6; border-radius: 4px }
+.gameItemFocused { background: #eef2ff }
 
 .durationNav { display: flex; gap: 8px; align-items: center; }
 .durationInput { width: 48px; padding: 0.4rem; border-radius: 6px; border: 1px solid #d1d5db; text-align: right }
