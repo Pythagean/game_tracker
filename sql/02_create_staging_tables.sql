@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.STAGING_sessions (
   game_id integer,
   start_date date,
   start_time time,
-  duration_minutes text,
+  duration text,
   location text,
   game_mode text,
   controller_style text,
