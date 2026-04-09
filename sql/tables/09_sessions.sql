@@ -46,3 +46,23 @@ EXECUTE FUNCTION public.fn_update_game_stats_on_session_insert();
 
 -- Index to speed up queries ordering games by last_played_at per user
 CREATE INDEX IF NOT EXISTS idx_games_user_last_played ON public.games (user_id, last_played_at DESC);
+
+-- Enable RLS and restrict sessions to their owner
+ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can select own sessions" ON public.sessions;
+CREATE POLICY "Users can select own sessions"
+    ON public.sessions FOR SELECT TO authenticated USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can insert own sessions" ON public.sessions;
+CREATE POLICY "Users can insert own sessions"
+    ON public.sessions FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can update own sessions" ON public.sessions;
+CREATE POLICY "Users can update own sessions"
+    ON public.sessions FOR UPDATE TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can delete own sessions" ON public.sessions;
+CREATE POLICY "Users can delete own sessions"
+    ON public.sessions FOR DELETE TO authenticated USING (user_id = auth.uid());

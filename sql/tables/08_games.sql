@@ -18,3 +18,23 @@ CREATE TABLE IF NOT EXISTS public.games
     igdb_id          INTEGER      UNIQUE,
     notes            TEXT
 );
+
+-- Enable RLS and restrict games to their owner
+ALTER TABLE public.games ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can select own games" ON public.games;
+CREATE POLICY "Users can select own games"
+    ON public.games FOR SELECT TO authenticated USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can insert own games" ON public.games;
+CREATE POLICY "Users can insert own games"
+    ON public.games FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can update own games" ON public.games;
+CREATE POLICY "Users can update own games"
+    ON public.games FOR UPDATE TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can delete own games" ON public.games;
+CREATE POLICY "Users can delete own games"
+    ON public.games FOR DELETE TO authenticated USING (user_id = auth.uid());

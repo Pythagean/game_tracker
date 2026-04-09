@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import AddGame from '@/pages/AddGame'
 import AddSession from '@/pages/AddSession'
+import Stats from '@/pages/Stats'
 import Auth from '@/pages/Auth'
 import { supabase } from '@/lib/supabase'
 
@@ -34,6 +35,9 @@ export default function App() {
           <Link to="/add-game" style={{ textDecoration: 'none', fontWeight: 600, color: '#6366f1' }}>
             + Add Game
           </Link>
+          <Link to="/stats" style={{ textDecoration: 'none', fontWeight: 600, color: '#6366f1' }}>
+            Stats
+          </Link>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {user ? (
@@ -48,6 +52,7 @@ export default function App() {
       </nav>
       <Routes>
         <Route path="/add-game" element={<AddGame />} />
+        <Route path="/stats" element={<Stats />} />
         <Route path="/add-session" element={<AddSession />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/" element={<AddGame />} />
