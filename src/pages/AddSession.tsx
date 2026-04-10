@@ -36,7 +36,7 @@ function roundTimeTo15(date = new Date()) {
 export default function AddSession() {
   const [games, setGames] = useState<{ game_id: number; title: string; cover_url?: string; last_played?: number }[]>([])
   const [platforms, setPlatforms] = useState<{ platform_id: number; name: string }[]>([])
-  const [players, setPlayers] = useState<{ player_id: number; name: string }[]>([])
+  const [players, setPlayers] = useState<{ player_id: number; name: string; last_played?: string | null }[]>([])
 
   const [selectedGameId, setSelectedGameId] = useState<number | null>(null)
   const [showGamePicker, setShowGamePicker] = useState(false)
@@ -44,9 +44,11 @@ export default function AddSession() {
   const [selectedPlatformId, setSelectedPlatformId] = useState<number | null>(null)
   const [gameMode, setGameMode] = useState<string>('Singleplayer')
   const [controllerStyle, setControllerStyle] = useState<string>('Controller')
-  const [selectedPlayedWithId, setSelectedPlayedWithId] = useState<number | null>(null)
+  const [selectedPlayedWithIds, setSelectedPlayedWithIds] = useState<number[]>([])
   const [addingPlayer, setAddingPlayer] = useState(false)
   const [newPlayerName, setNewPlayerName] = useState('')
+  const [showAllPlayers, setShowAllPlayers] = useState(false)
+  const [showPlayerDropdown, setShowPlayerDropdown] = useState(false)
   const [date, setDate] = useState(() => formatIsoDate(new Date()))
   const [time, setTime] = useState(() => {
     const t = roundTimeTo15(new Date())
@@ -94,9 +96,36 @@ export default function AddSession() {
       if (!mounted) return
       setPlatforms((p as any) || [])
 
-      const { data: pl } = await supabase.from('players').select('player_id, name').eq('user_id', userId).order('name')
+      const { data: pl } = await supabase.from('players').select('player_id, name').eq('user_id', userId)
       if (!mounted) return
-      setPlayers((pl as any) || [])
+
+      // Fetch session_player joined with sessions to find last-played date per player
+      const { data: spRows } = await supabase
+        .from('session_player')
+        .select('player_id, sessions(start_date)')
+      if (!mounted) return
+
+      // Build a map of player_id → max start_date
+      const lastPlayedMap = new Map<number, string>()
+      for (const row of (spRows as any[]) || []) {
+        const date = row.sessions?.start_date as string | undefined
+        const pid = row.player_id as number
+        if (date && (!lastPlayedMap.has(pid) || date > lastPlayedMap.get(pid)!)) {
+          lastPlayedMap.set(pid, date)
+        }
+      }
+
+      let playersList = ((pl as any[]) || []).map((p: any) => ({
+        ...p,
+        last_played: lastPlayedMap.get(p.player_id) ?? null,
+      }))
+      playersList.sort((a: any, b: any) => {
+        if (!a.last_played && !b.last_played) return String(a.name).localeCompare(String(b.name))
+        if (!a.last_played) return 1
+        if (!b.last_played) return -1
+        return b.last_played.localeCompare(a.last_played)
+      })
+      setPlayers(playersList)
     })()
     return () => { mounted = false }
   }, [])
@@ -104,6 +133,7 @@ export default function AddSession() {
   // close game picker when clicking outside
   const pickerRef = useRef<HTMLDivElement | null>(null)
   const gameListRef = useRef<HTMLDivElement | null>(null)
+  const gameSearchRef = useRef<HTMLInputElement | null>(null)
   const navigate = useNavigate()
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -116,14 +146,18 @@ export default function AddSession() {
 
   useEffect(() => {
     if (!showGamePicker) return
-    // default focused index when opening
+    // default focused index when opening (respect selected game if present)
     const idx = selectedGameId ? games.findIndex(g => g.game_id === selectedGameId) : 0
     setFocusedGameIndex(idx >= 0 ? idx : 0)
-    // move keyboard focus into the list so it receives arrow keys
+    // move keyboard focus into the search input so typing filters immediately
     setTimeout(() => {
-      gameListRef.current?.focus()
+      gameSearchRef.current?.focus()
     }, 0)
   }, [showGamePicker, selectedGameId, games])
+
+  // filtered games based on search term
+  const [gameSearch, setGameSearch] = useState('')
+  const filteredGames = games.filter(g => g.title.toLowerCase().includes(gameSearch.toLowerCase()))
 
   function changeDateBy(days: number) {
     const d = new Date(date)
@@ -205,7 +239,7 @@ export default function AddSession() {
       const { data, error } = await supabase.from('players').insert({ name: newPlayerName.trim(), user_id: userId }).select('player_id, name').single()
       if (error) throw error
       setPlayers(prev => [...prev, data as any])
-      setSelectedPlayedWithId((data as any).player_id)
+      setSelectedPlayedWithIds(prev => [...prev, (data as any).player_id])
       setAddingPlayer(false)
       setNewPlayerName('')
     } catch (err) {
@@ -237,9 +271,10 @@ export default function AddSession() {
 
       if (error) throw error
       const sessionId = (data as any).session_id
-      // if multiplayer and a player selected, insert into session_player
-      if ((gameMode === 'Local Multiplayer' || gameMode === 'Online Multiplayer') && selectedPlayedWithId) {
-        const { error: spErr } = await supabase.from('session_player').insert({ session_id: sessionId, player_id: selectedPlayedWithId })
+      // if multiplayer and players selected, insert into session_player
+      if ((gameMode === 'Local Multiplayer' || gameMode === 'Online Multiplayer') && selectedPlayedWithIds.length > 0) {
+        const rows = selectedPlayedWithIds.map(pid => ({ session_id: sessionId, player_id: pid }))
+        const { error: spErr } = await supabase.from('session_player').insert(rows)
         if (spErr) throw spErr
       }
       setSuccess(true)
@@ -287,40 +322,35 @@ export default function AddSession() {
           </button>
 
           {showGamePicker && (
-            <div
-              ref={gameListRef}
-              className={styles.gameList}
-              role="listbox"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowDown') {
-                  e.preventDefault()
-                  setFocusedGameIndex((prev) => (prev === null ? 0 : Math.min((games.length - 1), prev + 1)))
-                  return
-                }
-                if (e.key === 'ArrowUp') {
-                  e.preventDefault()
-                  setFocusedGameIndex((prev) => (prev === null ? 0 : Math.max(0, prev - 1)))
-                  return
-                }
-                if (e.key === 'Enter' && focusedGameIndex !== null) {
-                  const sel = games[focusedGameIndex]
-                  if (sel) { setSelectedGameId(sel.game_id); setShowGamePicker(false) }
-                }
-                if (e.key === 'Escape') setShowGamePicker(false)
-              }}
-            >
-              {games.map((g, i) => (
+            <div ref={gameListRef} className={styles.gameList} role="listbox">
+              <input
+                ref={gameSearchRef}
+                className={styles.input}
+                placeholder="Search games..."
+                value={gameSearch}
+                onChange={(e) => { setGameSearch(e.target.value); setFocusedGameIndex(0) }}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setFocusedGameIndex((prev) => (prev === null ? 0 : Math.min((filteredGames.length - 1), prev + 1))); return }
+                  if (e.key === 'ArrowUp') { e.preventDefault(); setFocusedGameIndex((prev) => (prev === null ? 0 : Math.max(0, prev - 1))); return }
+                  if (e.key === 'Escape') { setShowGamePicker(false); return }
+                  if (e.key === 'Enter' && focusedGameIndex !== null) {
+                    const sel = filteredGames[focusedGameIndex]
+                    if (sel) { setSelectedGameId(sel.game_id); setShowGamePicker(false); setGameSearch('') }
+                  }
+                }}
+              />
+
+              {filteredGames.map((g, i) => (
                 <div
                   key={g.game_id}
                   className={styles.gameItem + (focusedGameIndex === i ? ` ${styles.gameItemFocused}` : '')}
                   role="option"
                   aria-selected={selectedGameId === g.game_id}
-                  onClick={() => { setSelectedGameId(g.game_id); setShowGamePicker(false) }}
+                  onClick={() => { setSelectedGameId(g.game_id); setShowGamePicker(false); setGameSearch('') }}
                   onMouseEnter={() => setFocusedGameIndex(i)}
                 >
                   {g.cover_url ? <img src={g.cover_url.replace(/^\/\//, 'https://')} alt="cover" className={styles.thumbSmall} /> : <div className={styles.thumbPlaceholder} />}
-                  <div style={{ marginLeft: 8 }}><strong>{g.title}</strong>{g.last_played ? ` (Last Played on ${formatDate(new Date(g.last_played))})` : null}</div>
+                  <div style={{ marginLeft: 8 }}><strong>{g.title}</strong></div>
                 </div>
               ))}
             </div>
@@ -332,7 +362,7 @@ export default function AddSession() {
 
       <div className={styles.formWithCover}>
         <div className={styles.formLeft}>
-      <div className={styles.row}>
+        <div className={styles.row}>
         <div className={styles.label}>Platform</div>
         <select className={styles.input} value={selectedPlatformId ?? ''} onChange={(e) => setSelectedPlatformId(e.target.value ? Number(e.target.value) : null)}>
           <option value="">Select platform...</option>
@@ -353,15 +383,40 @@ export default function AddSession() {
         <div className={styles.row}>
           <div className={styles.label}>Played With</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1 }}>
-            <select className={styles.input} value={selectedPlayedWithId ?? ''} onChange={(e) => {
-              const v = e.target.value
-              if (v === '__add_new__') { setAddingPlayer(true); setSelectedPlayedWithId(null); return }
-              setSelectedPlayedWithId(v ? Number(v) : null)
-            }}>
-              <option value="">Select player...</option>
-              {players.map(pl => <option key={pl.player_id} value={pl.player_id}>{pl.name}</option>)}
-              <option value="__add_new__">+ Add new player…</option>
-            </select>
+            <div className={styles.playerSelect}>
+              <button
+                type="button"
+                className={styles.dropdownToggle}
+                onClick={() => setShowPlayerDropdown(v => !v)}
+                aria-haspopup="listbox"
+                aria-expanded={showPlayerDropdown}
+              >
+                {selectedPlayedWithIds.length === 0 ? 'Select players...' : players.filter(p => selectedPlayedWithIds.includes(p.player_id)).slice(0,3).map(p => p.name).join(', ')}
+                <span style={{ marginLeft: 8, opacity: 0.7 }}>▾</span>
+              </button>
+
+              {showPlayerDropdown && (
+                <div className={styles.playerDropdownMenu} role="listbox" aria-multiselectable="true">
+                  {players.map(pl => {
+                    const selected = selectedPlayedWithIds.includes(pl.player_id)
+                    return (
+                      <label key={pl.player_id} className={styles.dropdownItem}>
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => setSelectedPlayedWithIds(prev => prev.includes(pl.player_id) ? prev.filter(id => id !== pl.player_id) : [...prev, pl.player_id])}
+                        />
+                        <span style={{ marginLeft: 8 }}>{pl.name}</span>
+                      </label>
+                    )
+                  })}
+                  <div style={{ borderTop: '1px solid #e5e7eb', marginTop: 8, paddingTop: 8 }}>
+                    <button type="button" className={styles.pillAdd} onClick={() => { setAddingPlayer(true); setShowPlayerDropdown(false) }}>+ Add new player…</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {addingPlayer && (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <input className={styles.input} placeholder="Name" value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} />

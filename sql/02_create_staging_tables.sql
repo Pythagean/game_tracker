@@ -81,6 +81,11 @@ CREATE TABLE IF NOT EXISTS public.STAGING_developers (
   name text
 );
 
+CREATE TABLE IF NOT EXISTS public.STAGING_session_player (
+  session_id integer,
+  player_id integer
+);
+
 -- Helpful notes:
 -- - After creating these tables, load CSVs using psql's \copy or Supabase import tools.
 -- - Table names follow STAGING_<filename> pattern (underscores preserved).

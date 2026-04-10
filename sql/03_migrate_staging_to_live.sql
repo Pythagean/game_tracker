@@ -335,6 +335,29 @@ WHERE ss.start_date IS NOT NULL
 ON CONFLICT (session_id) DO NOTHING;
 
 -- =============================================================================
+-- STEP 12: session_player
+-- Maps staging session_id directly (same PK carried through in STEP 11).
+-- Maps staging player_id → canonical player_id by matching on name.
+-- =============================================================================
+
+INSERT INTO public.session_player (session_id, player_id)
+SELECT
+    ssp.session_id,
+    p.player_id
+FROM public.STAGING_session_player ssp
+-- staging player_id → name
+JOIN public.STAGING_players sp ON sp.player_id = ssp.player_id
+-- name → canonical player_id
+JOIN public.players p
+    ON lower(TRIM(p.name)) = lower(TRIM(sp.name))
+   AND p.user_id = '17a87e84-cecb-44fa-9d43-476c8ad9954f'::uuid
+-- only sessions that actually made it into the live table
+WHERE EXISTS (
+    SELECT 1 FROM public.sessions s WHERE s.session_id = ssp.session_id
+)
+ON CONFLICT DO NOTHING;
+
+-- =============================================================================
 -- POST-MIGRATION: Refresh game stats (total_playtime_minutes, play_count,
 -- last_played_at) from the sessions just inserted.
 -- The insert trigger fires per-row, but if you bypassed it (e.g. bulk copy),

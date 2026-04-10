@@ -9,6 +9,47 @@
 .row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
 .label { min-width: 100px; font-weight: 600; }
 .input { padding: 0.5rem; border-radius: 6px; border: 1px solid #d1d5db; }
+
+.playerSelect { min-width: 160px; position: relative }
+.dropdownToggle {
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  cursor: pointer;
+  min-width: 180px;
+  text-align: left;
+  font-size: 0.95rem;
+}
+.playerDropdownMenu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  width: 260px;
+  max-height: 200px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  padding: 6px;
+  z-index: 40;
+}
+.dropdownItem { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 6px; cursor: pointer }
+.dropdownItem:hover { background: #f8fafc }
+
+.pillList { display: flex; gap: 8px; flex-wrap: wrap; max-width: 100%; align-items: center; }
+.pill { padding: 6px 10px; border-radius: 999px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; font-weight: 500 }
+.pillSelected { background: #6366f1; color: #fff; border-color: #6366f1 }
+.pillAdd { background: #f8fafc; color: #374151 }
+
+/* Make pill list scrollable when there are many players */
+.pillList { max-height: 9rem; overflow: auto; padding: 6px 4px }
+
+/* Collapsed: show only a single row of pills */
+.pillListCollapsed { max-height: 30px; overflow: hidden }
+
+.seeMoreBtn { padding: 6px 10px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer }
 .dateNav { display: flex; gap: 8px; align-items: center; }
 .smallBtn { padding: 6px 8px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
 
