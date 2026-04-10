@@ -4,7 +4,28 @@ import { supabase } from '@/lib/supabase'
 import styles from './AddSession.module.css'
 
 function formatDate(d: Date) {
-  return d.toISOString().split('T')[0]
+  const weekday = d.toLocaleString('en-GB', { weekday: 'short' }) // e.g. 'Fri'
+  const day = d.getDate()
+  const month = d.toLocaleString('en-GB', { month: 'long' }) // e.g. 'April'
+  const year = d.getFullYear()
+  // ordinal
+  const ord = (n: number) => {
+    if (n % 100 >= 11 && n % 100 <= 13) return 'th'
+    switch (n % 10) {
+      case 1: return 'st'
+      case 2: return 'nd'
+      case 3: return 'rd'
+      default: return 'th'
+    }
+  }
+  return `${weekday} ${day}${ord(day)} ${month}, ${year}`
+}
+
+function formatIsoDate(d: Date) {
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 }
 
 function roundTimeTo15(date = new Date()) {
@@ -13,7 +34,7 @@ function roundTimeTo15(date = new Date()) {
 }
 
 export default function AddSession() {
-  const [games, setGames] = useState<{ game_id: number; title: string; cover_url?: string }[]>([])
+  const [games, setGames] = useState<{ game_id: number; title: string; cover_url?: string; last_played?: number }[]>([])
   const [platforms, setPlatforms] = useState<{ platform_id: number; name: string }[]>([])
   const [players, setPlayers] = useState<{ player_id: number; name: string }[]>([])
 
@@ -26,7 +47,7 @@ export default function AddSession() {
   const [selectedPlayedWithId, setSelectedPlayedWithId] = useState<number | null>(null)
   const [addingPlayer, setAddingPlayer] = useState(false)
   const [newPlayerName, setNewPlayerName] = useState('')
-  const [date, setDate] = useState(() => formatDate(new Date()))
+  const [date, setDate] = useState(() => formatIsoDate(new Date()))
   const [time, setTime] = useState(() => {
     const t = roundTimeTo15(new Date())
     return t.toTimeString().slice(0,5)
@@ -46,30 +67,19 @@ export default function AddSession() {
 
       const { data: g } = await supabase
         .from('games')
-        .select('game_id, title, cover_url')
+        .select('game_id, title, cover_url, last_played_at')
         .eq('user_id', userId)
-        .order('title')
       if (!mounted) return
 
-      // fetch user's sessions to determine last-played per game
-      const { data: sessions } = await supabase
-        .from('sessions')
-        .select('game_id, start_date, start_time')
-        .eq('user_id', userId)
-
-      const lastPlayedMap: Record<number, number> = {}
-      ;((sessions as any[]) || []).forEach((s) => {
-        if (!s?.game_id || !s?.start_date) return
-        const timePart = s.start_time ?? '00:00:00'
-        const ts = new Date(`${s.start_date}T${timePart}`).getTime()
-        const gid = Number(s.game_id)
-        if (!lastPlayedMap[gid] || ts > lastPlayedMap[gid]) lastPlayedMap[gid] = ts
-      })
-
-      const gamesList = (g as any) || []
+      // Use `last_played_at` from the games row (if present) to drive ordering
+      let gamesList = (g as any) || []
+      gamesList = gamesList.map((item: any) => ({
+        ...item,
+        last_played: item.last_played_at ? new Date(item.last_played_at).getTime() : 0,
+      }))
       gamesList.sort((a: any, b: any) => {
-        const la = lastPlayedMap[a.game_id] ?? 0
-        const lb = lastPlayedMap[b.game_id] ?? 0
+        const la = a.last_played ?? 0
+        const lb = b.last_played ?? 0
         if (la === lb) return String(a.title).localeCompare(String(b.title))
         return lb - la
       })
@@ -114,7 +124,7 @@ export default function AddSession() {
   function changeDateBy(days: number) {
     const d = new Date(date)
     d.setDate(d.getDate() + days)
-    setDate(formatDate(d))
+    setDate(formatIsoDate(d))
   }
 
   function changeTimeBy(hours: number) {
@@ -231,9 +241,7 @@ export default function AddSession() {
       setSuccess(true)
       // auto-hide
       setTimeout(() => setSuccess(false), 2000)
-      // reset minimal fields
-      setSelectedGameId(null)
-      setSelectedPlatformId(null)
+      // keep form values so user can add multiple sessions for the same game
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally { setSaving(false) }
@@ -264,7 +272,7 @@ export default function AddSession() {
                 return g ? (
                   <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
                     {g.cover_url ? <img src={g.cover_url.replace(/^\/\//, 'https://')} alt="thumb" className={styles.thumbSmall} /> : null}
-                    <span>{g.title}</span>
+                      <span><strong>{g.title}</strong></span>
                   </span>
                 ) : 'Select game...'
               })()
@@ -306,7 +314,7 @@ export default function AddSession() {
                   onMouseEnter={() => setFocusedGameIndex(i)}
                 >
                   {g.cover_url ? <img src={g.cover_url.replace(/^\/\//, 'https://')} alt="cover" className={styles.thumbSmall} /> : <div className={styles.thumbPlaceholder} />}
-                  <div style={{ marginLeft: 8 }}>{g.title}</div>
+                  <div style={{ marginLeft: 8 }}><strong>{g.title}</strong>{g.last_played ? ` (Last Played on ${formatDate(new Date(g.last_played))})` : null}</div>
                 </div>
               ))}
             </div>
@@ -381,9 +389,11 @@ export default function AddSession() {
       <div className={styles.row}>
         <div className={styles.label}>Start time</div>
         <div className={styles.timeNav}>
+          <button className={styles.smallBtn} onClick={() => changeTimeBy(-1)} aria-label="Decrease time by 1 hour">«</button>
           <button className={styles.smallBtn} onClick={() => changeTimeByMinutes(-15)} aria-label="Decrease time by 15 minutes">‹</button>
           <input type="time" step={900} className={styles.input} value={time} onChange={handleTimeChange} />
           <button className={styles.smallBtn} onClick={() => changeTimeByMinutes(15)} aria-label="Increase time by 15 minutes">›</button>
+          <button className={styles.smallBtn} onClick={() => changeTimeBy(1)} aria-label="Increase time by 1 hour">»</button>
         </div>
       </div>
 

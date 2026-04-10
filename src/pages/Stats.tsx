@@ -13,10 +13,10 @@ export default function Stats() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [monthGames, setMonthGames] = useState<string[]>([])
+  const [monthGames, setMonthGames] = useState<{ title: string; minutes: number }[]>([])
   const [monthMinutes, setMonthMinutes] = useState<number>(0)
 
-  const [yearGames, setYearGames] = useState<string[]>([])
+  const [yearGames, setYearGames] = useState<{ title: string; minutes: number }[]>([])
   const [yearMinutes, setYearMinutes] = useState<number>(0)
 
   useEffect(() => {
@@ -57,8 +57,8 @@ export default function Stats() {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
       const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
 
-      const monthSet = new Set<string>()
-      const yearSet = new Set<string>()
+      const monthMap = new Map<string, number>()
+      const yearMap = new Map<string, number>()
       let monthSum = 0
       let yearSum = 0
 
@@ -69,19 +69,27 @@ export default function Stats() {
 
         if (!date) return
         // year aggregate
-        yearSet.add(title)
+        yearMap.set(title, (yearMap.get(title) || 0) + minutes)
         yearSum += minutes
 
         // month aggregate
         if (date >= monthStart && date <= monthEnd) {
-          monthSet.add(title)
+          monthMap.set(title, (monthMap.get(title) || 0) + minutes)
           monthSum += minutes
         }
       })
 
-      setMonthGames(Array.from(monthSet).sort())
+      setMonthGames(
+        Array.from(monthMap.entries())
+          .map(([title, minutes]) => ({ title, minutes }))
+          .sort((a, b) => (b.minutes - a.minutes) || a.title.localeCompare(b.title))
+      )
       setMonthMinutes(monthSum)
-      setYearGames(Array.from(yearSet).sort())
+      setYearGames(
+        Array.from(yearMap.entries())
+          .map(([title, minutes]) => ({ title, minutes }))
+          .sort((a, b) => (b.minutes - a.minutes) || a.title.localeCompare(b.title))
+      )
       setYearMinutes(yearSum)
       setLoading(false)
     })()
@@ -101,7 +109,7 @@ export default function Stats() {
             <div className={styles.hint}>{formatDuration(monthMinutes)} total</div>
             {monthGames.length === 0 ? <div className={styles.hint}>No games recorded this month.</div> : (
               <ul>
-                {monthGames.map((g) => <li key={g}>{g}</li>)}
+                {monthGames.map((g) => <li key={g.title}>{g.title} — {formatDuration(g.minutes)}</li>)}
               </ul>
             )}
           </section>
@@ -111,7 +119,7 @@ export default function Stats() {
             <div className={styles.hint}>{formatDuration(yearMinutes)} total</div>
             {yearGames.length === 0 ? <div className={styles.hint}>No games recorded this year.</div> : (
               <ul>
-                {yearGames.map((g) => <li key={g}>{g}</li>)}
+                {yearGames.map((g) => <li key={g.title}>{g.title} — {formatDuration(g.minutes)}</li>)}
               </ul>
             )}
           </section>
