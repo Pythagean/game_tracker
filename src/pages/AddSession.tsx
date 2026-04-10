@@ -30,7 +30,7 @@ function formatIsoDate(d: Date) {
 
 function roundTimeTo15(date = new Date()) {
   const ms = 1000 * 60 * 15
-  return new Date(Math.ceil(date.getTime() / ms) * ms)
+  return new Date(Math.floor(date.getTime() / ms) * ms)
 }
 
 export default function AddSession() {
@@ -57,6 +57,10 @@ export default function AddSession() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+
+  useEffect(() => {
+    console.log('AddSession mounted - selectedGameId:', selectedGameId, 'selectedPlatformId:', selectedPlatformId)
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -246,6 +250,8 @@ export default function AddSession() {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally { setSaving(false) }
   }
+  const saveDisabled = Boolean(saving || !selectedGameId || !selectedPlatformId)
+  console.log('AddSession saveDisabled:', saveDisabled, { saving, selectedGameId, selectedPlatformId })
 
   return (
     <div className={styles.container}>
@@ -416,7 +422,13 @@ export default function AddSession() {
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <button className={styles.saveButton} onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save session'}</button>
+        <button
+          className={styles.saveButton}
+          onClick={handleSave}
+          disabled={saveDisabled}
+        >
+          {saving ? 'Saving…' : 'Save session'}
+        </button>
         {error && <div className={styles.error} style={{ marginTop: 8 }}>{error}</div>}
         {success && <div className={styles.success} style={{ marginTop: 8 }}>Session added</div>}
       </div>

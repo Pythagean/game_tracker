@@ -5,6 +5,7 @@ import AddSession from '@/pages/AddSession'
 import Stats from '@/pages/Stats'
 import Auth from '@/pages/Auth'
 import { supabase } from '@/lib/supabase'
+import appStyles from './App.module.css'
 
 export default function App() {
   const [user, setUser] = useState<any>(null)
@@ -24,29 +25,46 @@ export default function App() {
     return () => listener.subscription.unsubscribe()
   }, [])
 
+  const navBtnStyle = {
+    display: 'inline-flex',
+    gap: 8,
+    alignItems: 'center',
+    padding: '0.4rem 0.7rem',
+    borderRadius: 6,
+    border: '1px solid #e6e6e6',
+    background: '#fff',
+    color: '#374151',
+    textDecoration: 'none',
+    fontWeight: 600,
+  }
+
   return (
     <BrowserRouter>
       <nav style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #e2e8f0', fontFamily: 'system-ui, sans-serif', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          
-          <Link to="/add-session" style={{ textDecoration: 'none', fontWeight: 600, color: '#6366f1' }}>
-            + Add Session
+          <Link to="/add-session" style={navBtnStyle} className={appStyles.navBtn}>
+            <span style={{ fontSize: 16 }}>🕒</span>
+            <span>Add Session</span>
           </Link>
-          <Link to="/add-game" style={{ textDecoration: 'none', fontWeight: 600, color: '#6366f1' }}>
-            + Add Game
+          <Link to="/add-game" style={navBtnStyle} className={appStyles.navBtn}>
+            <span style={{ fontSize: 16 }}>🎮</span>
+            <span>Add Game</span>
           </Link>
-          <Link to="/stats" style={{ textDecoration: 'none', fontWeight: 600, color: '#6366f1' }}>
-            Stats
+          <Link to="/stats" style={navBtnStyle} className={appStyles.navBtn}>
+            <span style={{ fontSize: 16 }}>📊</span>
+            <span>Stats</span>
           </Link>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {user ? (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ color: '#374151' }}>{user.email}</span>
-              <Link to="/auth" style={{ color: '#6366f1' }}>Account</Link>
+              <Link to="/auth" style={navBtnStyle} className={appStyles.navBtn}>
+                <span style={{ fontSize: 16 }}>👤</span>
+                <span className={appStyles.onlyIconMobile}>Account</span>
+              </Link>
             </div>
           ) : (
-            <Link to="/auth" style={{ color: '#6366f1' }}>Sign in</Link>
+            <Link to="/auth" style={navBtnStyle} className={appStyles.navBtn}>Sign in</Link>
           )}
         </div>
       </nav>

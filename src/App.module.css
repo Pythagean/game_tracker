@@ -1,0 +1,15 @@
+.navBtn {
+  font-size: 14px;
+}
+
+@media (max-width: 480px) {
+  .navBtn {
+    font-size: 13px;
+    padding: 0.25rem 0.5rem;
+  }
+}
+
+.onlyIconMobile { display: inline }
+@media (max-width: 480px) {
+  .onlyIconMobile { display: none }
+}

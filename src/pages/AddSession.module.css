@@ -96,6 +96,7 @@
   appearance: textfield;
 }
 .saveButton { padding: 0.6rem 1.2rem; background: #6366f1; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+.saveButton:disabled { opacity: 0.6; cursor: not-allowed; background: #9ca3af; color: #fff; }
 .hint { color: #6b7280; font-size: 0.9rem; }
 .error { color: #dc2626; }
 .success { color: #16a34a; }
