@@ -13,10 +13,12 @@ export default function Stats() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [monthGames, setMonthGames] = useState<{ title: string; minutes: number }[]>([])
+  const [monthGames, setMonthGames] = useState<{ title: string; minutes: number; cover_url?: string }[]>([])
   const [monthMinutes, setMonthMinutes] = useState<number>(0)
+  const [lastMonthGames, setLastMonthGames] = useState<{ title: string; minutes: number; cover_url?: string }[]>([])
+  const [lastMonthMinutes, setLastMonthMinutes] = useState<number>(0)
 
-  const [yearGames, setYearGames] = useState<{ title: string; minutes: number }[]>([])
+  const [yearGames, setYearGames] = useState<{ title: string; minutes: number; cover_url?: string }[]>([])
   const [yearMinutes, setYearMinutes] = useState<number>(0)
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export default function Stats() {
 
       const { data: sessions, error } = await supabase
         .from('sessions')
-        .select('session_id, duration_minutes, start_date, games ( title )')
+        .select('session_id, duration_minutes, start_date, games ( title, cover_url )')
         .eq('user_id', userId)
         .gte('start_date', startOfYear)
         .lte('start_date', endOfYear)
@@ -56,38 +58,58 @@ export default function Stats() {
       // determine month boundaries
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
       const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0]
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0]
 
-      const monthMap = new Map<string, number>()
-      const yearMap = new Map<string, number>()
+      const monthMap = new Map<string, { minutes: number; cover?: string }>()
+      const lastMonthMap = new Map<string, { minutes: number; cover?: string }>()
+      const yearMap = new Map<string, { minutes: number; cover?: string }>()
       let monthSum = 0
+      let lastMonthSum = 0
       let yearSum = 0
 
       list.forEach((s) => {
         const date = s?.start_date
         const title = s?.games?.title ?? 'Unknown'
+        const cover = s?.games?.cover_url ?? undefined
         const minutes = Number(s?.duration_minutes) || 0
 
         if (!date) return
         // year aggregate
-        yearMap.set(title, (yearMap.get(title) || 0) + minutes)
+        const y = yearMap.get(title) || { minutes: 0, cover }
+        yearMap.set(title, { minutes: y.minutes + minutes, cover: y.cover || cover })
         yearSum += minutes
 
         // month aggregate
         if (date >= monthStart && date <= monthEnd) {
-          monthMap.set(title, (monthMap.get(title) || 0) + minutes)
+          const m = monthMap.get(title) || { minutes: 0, cover }
+          monthMap.set(title, { minutes: m.minutes + minutes, cover: m.cover || cover })
           monthSum += minutes
+        }
+
+        // last-month aggregate
+        if (date >= lastMonthStart && date <= lastMonthEnd) {
+          const lm = lastMonthMap.get(title) || { minutes: 0, cover }
+          lastMonthMap.set(title, { minutes: lm.minutes + minutes, cover: lm.cover || cover })
+          lastMonthSum += minutes
         }
       })
 
       setMonthGames(
         Array.from(monthMap.entries())
-          .map(([title, minutes]) => ({ title, minutes }))
+          .map(([title, obj]) => ({ title, minutes: obj.minutes, cover_url: obj.cover }))
           .sort((a, b) => (b.minutes - a.minutes) || a.title.localeCompare(b.title))
       )
       setMonthMinutes(monthSum)
+      setLastMonthGames(
+        Array.from(lastMonthMap.entries())
+          .map(([title, obj]) => ({ title, minutes: obj.minutes, cover_url: obj.cover }))
+          .sort((a, b) => (b.minutes - a.minutes) || a.title.localeCompare(b.title))
+      )
+      setLastMonthMinutes(lastMonthSum)
       setYearGames(
         Array.from(yearMap.entries())
-          .map(([title, minutes]) => ({ title, minutes }))
+          .map(([title, obj]) => ({ title, minutes: obj.minutes, cover_url: obj.cover }))
           .sort((a, b) => (b.minutes - a.minutes) || a.title.localeCompare(b.title))
       )
       setYearMinutes(yearSum)
@@ -95,6 +117,31 @@ export default function Stats() {
     })()
     return () => { mounted = false }
   }, [])
+
+  function chunkIntoColumns<T>(items: T[], colSize = 5) {
+    const cols: T[][] = []
+    for (let i = 0; i < items.length; i += colSize) cols.push(items.slice(i, i + colSize))
+    return cols
+  }
+
+  function renderColumns(list: { title: string; minutes: number; cover_url?: string }[]) {
+    if (list.length === 0) return null
+    const cols = chunkIntoColumns(list, 5)
+    return (
+      <div style={{ display: 'flex', gap: 16 }}>
+        {cols.map((col, ci) => (
+          <ul key={ci} style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {col.map((g) => (
+              <li key={g.title} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                {g.cover_url ? <img src={g.cover_url.replace(/^\/\//, 'https://')} alt="cover" className={styles.thumbSmall} /> : <div style={{ width: 40, height: 40 }} />}
+                <span><strong>{g.title}</strong> — {formatDuration(g.minutes)}</span>
+              </li>
+            ))}
+          </ul>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className={styles.container}>
@@ -106,22 +153,20 @@ export default function Stats() {
         <div>
           <section style={{ marginBottom: 20 }}>
             <h2>Games Played This Month</h2>
-            <div className={styles.hint}>{formatDuration(monthMinutes)} total</div>
-            {monthGames.length === 0 ? <div className={styles.hint}>No games recorded this month.</div> : (
-              <ul>
-                {monthGames.map((g) => <li key={g.title}>{g.title} — {formatDuration(g.minutes)}</li>)}
-              </ul>
-            )}
+            <div className={styles.hint} style={{ fontWeight: 700, fontSize: '1.05rem', paddingBottom: 8, marginBottom: 12 }}>{formatDuration(monthMinutes)} total</div>
+            {monthGames.length === 0 ? <div className={styles.hint}>No games recorded this month.</div> : renderColumns(monthGames)}
+          </section>
+
+          <section style={{ marginBottom: 20 }}>
+            <h2>Games Played Last Month</h2>
+            <div className={styles.hint} style={{ fontWeight: 700, fontSize: '1.05rem', paddingBottom: 8, marginBottom: 12 }}>{formatDuration(lastMonthMinutes)} total</div>
+            {lastMonthGames.length === 0 ? <div className={styles.hint}>No games recorded last month.</div> : renderColumns(lastMonthGames)}
           </section>
 
           <section>
             <h2>Games Played This Year</h2>
-            <div className={styles.hint}>{formatDuration(yearMinutes)} total</div>
-            {yearGames.length === 0 ? <div className={styles.hint}>No games recorded this year.</div> : (
-              <ul>
-                {yearGames.map((g) => <li key={g.title}>{g.title} — {formatDuration(g.minutes)}</li>)}
-              </ul>
-            )}
+            <div className={styles.hint} style={{ fontWeight: 700, fontSize: '1.05rem', paddingBottom: 8, marginBottom: 12 }}>{formatDuration(yearMinutes)} total</div>
+            {yearGames.length === 0 ? <div className={styles.hint}>No games recorded this year.</div> : renderColumns(yearGames)}
           </section>
         </div>
       )}
