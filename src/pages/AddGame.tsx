@@ -347,6 +347,7 @@ export default function AddGame() {
                 style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc' }}
               />
               <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={handleAddPlatform} className={styles.saveButton}>Save platform</button>
                 <button onClick={() => setAddingPlatform(false)} className={styles.saveButton} style={{ background: '#e5e7eb', color: '#111' }}>Cancel</button>
               </div>
             </div>

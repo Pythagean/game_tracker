@@ -3,24 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import styles from './AddSession.module.css'
 
-function formatDate(d: Date) {
-  const weekday = d.toLocaleString('en-GB', { weekday: 'short' }) // e.g. 'Fri'
-  const day = d.getDate()
-  const month = d.toLocaleString('en-GB', { month: 'long' }) // e.g. 'April'
-  const year = d.getFullYear()
-  // ordinal
-  const ord = (n: number) => {
-    if (n % 100 >= 11 && n % 100 <= 13) return 'th'
-    switch (n % 10) {
-      case 1: return 'st'
-      case 2: return 'nd'
-      case 3: return 'rd'
-      default: return 'th'
-    }
-  }
-  return `${weekday} ${day}${ord(day)} ${month}, ${year}`
-}
-
 function formatIsoDate(d: Date) {
   const yyyy = d.getFullYear()
   const mm = String(d.getMonth() + 1).padStart(2, '0')
@@ -47,7 +29,6 @@ export default function AddSession() {
   const [selectedPlayedWithIds, setSelectedPlayedWithIds] = useState<number[]>([])
   const [addingPlayer, setAddingPlayer] = useState(false)
   const [newPlayerName, setNewPlayerName] = useState('')
-  const [showAllPlayers, setShowAllPlayers] = useState(false)
   const [showPlayerDropdown, setShowPlayerDropdown] = useState(false)
   const [date, setDate] = useState(() => formatIsoDate(new Date()))
   const [time, setTime] = useState(() => {
