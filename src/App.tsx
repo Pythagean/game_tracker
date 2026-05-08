@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import { HashRouter, Routes, Route, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import AddGame from '@/pages/AddGame'
 import AddSession from '@/pages/AddSession'
@@ -39,7 +39,7 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <nav style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #e2e8f0', fontFamily: 'system-ui, sans-serif', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <Link to="/add-session" style={navBtnStyle} className={appStyles.navBtn}>
@@ -75,6 +75,6 @@ export default function App() {
         <Route path="/auth" element={<Auth />} />
         <Route path="/" element={<AddGame />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   )
 }
