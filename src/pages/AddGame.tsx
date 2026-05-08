@@ -69,7 +69,7 @@ export default function AddGame() {
         data: { user },
       } = await supabase.auth.getUser()
 
-      if (!user) throw new Error('You must be logged in to add a game')
+      if (!user) throw new Error('You must be logged in to add a game.')
 
       const releaseDate = igdbReleaseDate(selected.first_release_date)
 
