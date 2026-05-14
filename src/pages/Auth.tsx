@@ -31,7 +31,10 @@ export default function Auth() {
       return
     }
 
-    const { error } = await supabase.auth.signInWithOtp({ email })
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin },
+    })
     if (error) setMessage(error.message)
     else setMessage('Check your email for the magic link to sign in')
   }
