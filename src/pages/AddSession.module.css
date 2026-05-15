@@ -68,6 +68,29 @@
   align-items: flex-start;
 }
 
+@media (max-width: 600px) {
+  .coverColumn {
+    display: none;
+  }
+}
+
+.statsColumns {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.statsColumns ul {
+  flex: 1 1 auto;
+}
+
+@media (max-width: 600px) {
+  .statsColumns ul {
+    flex: 0 0 calc(50% - 8px);
+    max-width: calc(50% - 8px);
+  }
+}
+
 .coverPreview {
   width: 140px;
   height: 190px;

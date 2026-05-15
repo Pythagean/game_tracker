@@ -128,13 +128,13 @@ export default function Stats() {
     if (list.length === 0) return null
     const cols = chunkIntoColumns(list, 5)
     return (
-      <div style={{ display: 'flex', gap: 16 }}>
+      <div className={styles.statsColumns}>
         {cols.map((col, ci) => (
           <ul key={ci} style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {col.map((g) => (
               <li key={g.title} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                 {g.cover_url ? <img src={g.cover_url.replace(/^\/\//, 'https://')} alt="cover" className={styles.thumbSmall} /> : <div style={{ width: 40, height: 40 }} />}
-                <span><strong>{g.title}</strong> — {formatDuration(g.minutes)}</span>
+                <span style={{ display: 'flex', flexDirection: 'column' }}><strong>{g.title}</strong><span>{formatDuration(g.minutes)}</span></span>
               </li>
             ))}
           </ul>
