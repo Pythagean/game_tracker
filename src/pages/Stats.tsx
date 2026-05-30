@@ -143,6 +143,12 @@ export default function Stats() {
     )
   }
 
+  const now = new Date()
+  const thisMonthLabel = now.toLocaleString('default', { month: 'long'})
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const lastMonthLabel = lastMonthDate.toLocaleString('default', { month: 'long' })
+  const thisYearLabel = now.getFullYear().toString()
+
   return (
     <div className={styles.container}>
       <h1>Stats</h1>
@@ -152,19 +158,19 @@ export default function Stats() {
       {!loading && !error && (
         <div>
           <section style={{ marginBottom: 20 }}>
-            <h2>Games Played This Month</h2>
+            <h2>Games Played in {thisMonthLabel}</h2>
             <div className={styles.hint} style={{ fontWeight: 700, fontSize: '1.05rem', paddingBottom: 8, marginBottom: 12 }}>{formatDuration(monthMinutes)} total</div>
             {monthGames.length === 0 ? <div className={styles.hint}>No games recorded this month.</div> : renderColumns(monthGames)}
           </section>
 
           <section style={{ marginBottom: 20 }}>
-            <h2>Games Played Last Month</h2>
+            <h2>Games Played in {lastMonthLabel}</h2>
             <div className={styles.hint} style={{ fontWeight: 700, fontSize: '1.05rem', paddingBottom: 8, marginBottom: 12 }}>{formatDuration(lastMonthMinutes)} total</div>
             {lastMonthGames.length === 0 ? <div className={styles.hint}>No games recorded last month.</div> : renderColumns(lastMonthGames)}
           </section>
 
           <section>
-            <h2>Games Played This Year</h2>
+            <h2>Games Played in {thisYearLabel}</h2>
             <div className={styles.hint} style={{ fontWeight: 700, fontSize: '1.05rem', paddingBottom: 8, marginBottom: 12 }}>{formatDuration(yearMinutes)} total</div>
             {yearGames.length === 0 ? <div className={styles.hint}>No games recorded this year.</div> : renderColumns(yearGames)}
           </section>
