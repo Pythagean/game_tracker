@@ -10,6 +10,19 @@ function formatIsoDate(d: Date) {
   return `${yyyy}-${mm}-${dd}`
 }
 
+function isoToDisplay(iso: string) {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
+function displayToIso(display: string) {
+  const match = display.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (!match) return null
+  const [, d, m, y] = match
+  return `${y}-${m}-${d}`
+}
+
 function roundTimeTo15(date = new Date()) {
   const ms = 1000 * 60 * 15
   return new Date(Math.floor(date.getTime() / ms) * ms)
@@ -31,6 +44,7 @@ export default function AddSession() {
   const [newPlayerName, setNewPlayerName] = useState('')
   const [showPlayerDropdown, setShowPlayerDropdown] = useState(false)
   const [date, setDate] = useState(() => formatIsoDate(new Date()))
+  const [dateInput, setDateInput] = useState(() => isoToDisplay(formatIsoDate(new Date())))
   const [time, setTime] = useState(() => {
     const t = roundTimeTo15(new Date())
     return t.toTimeString().slice(0,5)
@@ -115,6 +129,7 @@ export default function AddSession() {
   const pickerRef = useRef<HTMLDivElement | null>(null)
   const gameListRef = useRef<HTMLDivElement | null>(null)
   const gameSearchRef = useRef<HTMLInputElement | null>(null)
+  const hiddenDateRef = useRef<HTMLInputElement | null>(null)
   const navigate = useNavigate()
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -143,7 +158,9 @@ export default function AddSession() {
   function changeDateBy(days: number) {
     const d = new Date(date)
     d.setDate(d.getDate() + days)
-    setDate(formatIsoDate(d))
+    const newIso = formatIsoDate(d)
+    setDate(newIso)
+    setDateInput(isoToDisplay(newIso))
   }
 
   function changeTimeBy(hours: number) {
@@ -170,6 +187,12 @@ export default function AddSession() {
     const hhStr = String(dt.getHours()).padStart(2, '0')
     const mmStr = String(dt.getMinutes()).padStart(2, '0')
     setTime(`${hhStr}:${mmStr}`)
+  }
+
+  function toggleAmPm() {
+    const [hh, mm] = time.split(':').map(Number)
+    const newHh = hh >= 12 ? hh - 12 : hh + 12
+    setTime(`${String(newHh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`)
   }
 
   function changeDurationBy(deltaMinutes: number) {
@@ -423,8 +446,30 @@ export default function AddSession() {
         <div className={styles.label}>Date</div>
         <div className={styles.dateNav}>
           <button className={styles.smallBtn} onClick={() => changeDateBy(-1)}>‹</button>
-          <input type="date" className={styles.input} value={date} onChange={(e) => setDate(e.target.value)} />
+          <input
+            type="text"
+            className={`${styles.input} ${styles.dateInput}`}
+            value={dateInput}
+            onChange={(e) => {
+              setDateInput(e.target.value)
+              const iso = displayToIso(e.target.value)
+              if (iso) setDate(iso)
+            }}
+            onBlur={() => setDateInput(isoToDisplay(date))}
+            placeholder="dd/mm/yyyy"
+          />
+          <input
+            ref={hiddenDateRef}
+            type="date"
+            style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
+            value={date}
+            onChange={(e) => {
+              const iso = e.target.value
+              if (iso) { setDate(iso); setDateInput(isoToDisplay(iso)) }
+            }}
+          />
           <button className={styles.smallBtn} onClick={() => changeDateBy(1)}>›</button>
+          <button className={styles.smallBtn} onClick={() => hiddenDateRef.current?.showPicker()} aria-label="Open calendar">📅</button>
         </div>
       </div>
 
@@ -436,6 +481,16 @@ export default function AddSession() {
           <input type="time" step={900} className={styles.input} value={time} onChange={handleTimeChange} />
           <button className={styles.smallBtn} onClick={() => changeTimeByMinutes(15)} aria-label="Increase time by 15 minutes">›</button>
           <button className={styles.smallBtn} onClick={() => changeTimeBy(1)} aria-label="Increase time by 1 hour">»</button>
+          <div className={styles.amPmToggle}>
+            <button
+              className={`${styles.amPmBtn} ${parseInt(time.split(':')[0]) < 12 ? styles.amPmActive : ''}`}
+              onClick={() => { const hh = parseInt(time.split(':')[0]); if (hh >= 12) setTime(`${String(hh - 12).padStart(2, '0')}:${time.split(':')[1]}`) }}
+            >am</button>
+            <button
+              className={`${styles.amPmBtn} ${parseInt(time.split(':')[0]) >= 12 ? styles.amPmActive : ''}`}
+              onClick={() => { const hh = parseInt(time.split(':')[0]); if (hh < 12) setTime(`${String(hh + 12).padStart(2, '0')}:${time.split(':')[1]}`) }}
+            >pm</button>
+          </div>
         </div>
       </div>
 

@@ -41,21 +41,20 @@ export default function App() {
   return (
     <HashRouter>
       <nav style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #e2e8f0', fontFamily: 'system-ui, sans-serif', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Link to="/add-session" style={navBtnStyle} className={appStyles.navBtn}>
             <span style={{ fontSize: 16 }}>🕒</span>
-            <span>Add Session</span>
+            <span>+ Session</span>
           </Link>
           <Link to="/add-game" style={navBtnStyle} className={appStyles.navBtn}>
             <span style={{ fontSize: 16 }}>🎮</span>
-            <span>Add Game</span>
+            <span>+ Game</span>
           </Link>
           <Link to="/stats" style={navBtnStyle} className={appStyles.navBtn}>
             <span style={{ fontSize: 16 }}>📊</span>
             <span>Stats</span>
           </Link>
-        </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {user ? (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <Link to="/auth" style={navBtnStyle} className={appStyles.navBtn}>
@@ -67,6 +66,8 @@ export default function App() {
             <Link to="/auth" style={navBtnStyle} className={appStyles.navBtn}>Sign in</Link>
           )}
         </div>
+        </div>
+        
       </nav>
       <Routes>
         <Route path="/add-game" element={<AddGame />} />

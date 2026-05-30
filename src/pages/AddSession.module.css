@@ -35,10 +35,10 @@
   padding: 6px;
   z-index: 40;
 }
-.dropdownItem { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 6px; cursor: pointer }
+.dropdownItem { display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 6px; cursor: pointer }
 .dropdownItem:hover { background: #f8fafc }
 
-.pillList { display: flex; gap: 8px; flex-wrap: wrap; max-width: 100%; align-items: center; }
+.pillList { display: flex; gap: 4px; flex-wrap: wrap; max-width: 100%; align-items: center; }
 .pill { padding: 6px 10px; border-radius: 999px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; font-weight: 500 }
 .pillSelected { background: #6366f1; color: #fff; border-color: #6366f1 }
 .pillAdd { background: #f8fafc; color: #374151 }
@@ -50,8 +50,13 @@
 .pillListCollapsed { max-height: 30px; overflow: hidden }
 
 .seeMoreBtn { padding: 6px 10px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer }
-.dateNav { display: flex; gap: 8px; align-items: center; }
-.smallBtn { padding: 6px 8px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
+.dateNav { display: flex; gap: 4px; align-items: center; }
+.dateInput { width: 100px; text-align: center; }
+.smallBtn { padding: 6px 6px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
+.amPmToggle { display: flex; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+.amPmBtn { padding: 6px 6px; border: none; background: #fff; cursor: pointer; font-size: inherit; line-height: inherit; }
+.amPmBtn + .amPmBtn { border-left: 1px solid #e5e7eb; }
+.amPmActive { background: #6366f1; color: #fff; font-weight: 400; }
 
 .formWithCover {
   display: flex;
@@ -100,12 +105,12 @@
   border: 1px solid #e6e6e6;
 }
 
-.timeNav { display: flex; gap: 8px; align-items: center; }
+.timeNav { display: flex; gap: 4px; align-items: center; }
 
 .gamePickerButton {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   padding: 0.5rem;
   border-radius: 6px;
   border: 1px solid #d1d5db;
@@ -140,13 +145,13 @@
 
 .pickerRow { position: relative }
 
-.gameItem { display: flex; align-items: center; padding: 6px; gap: 8px; cursor: pointer; border-radius: 6px }
+.gameItem { display: flex; align-items: center; padding: 6px; gap: 4px; cursor: pointer; border-radius: 6px }
 .gameItem:hover { background: #f3f4f6 }
 .thumbSmall { width: 36px; height: 48px; object-fit: cover; border-radius: 4px }
 .thumbPlaceholder { width: 36px; height: 48px; background: #f3f4f6; border-radius: 4px }
 .gameItemFocused { background: #eef2ff }
 
-.durationNav { display: flex; gap: 8px; align-items: center; }
+.durationNav { display: flex; gap: 4px; align-items: center; }
 .durationInput { width: 48px; padding: 0.4rem; border-radius: 6px; border: 1px solid #d1d5db; text-align: right }
 
 /* Hide native number input spinners — we'll use custom buttons */
