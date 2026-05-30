@@ -189,12 +189,6 @@ export default function AddSession() {
     setTime(`${hhStr}:${mmStr}`)
   }
 
-  function toggleAmPm() {
-    const [hh, mm] = time.split(':').map(Number)
-    const newHh = hh >= 12 ? hh - 12 : hh + 12
-    setTime(`${String(newHh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`)
-  }
-
   function changeDurationBy(deltaMinutes: number) {
     setDuration((prev) => {
       const next = Math.max(15, prev + deltaMinutes)
