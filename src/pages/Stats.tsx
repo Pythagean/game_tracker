@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase, FIXED_USER_ID } from '@/lib/supabase'
 import styles from './AddSession.module.css'
 
 function formatDuration(minutes: number) {
@@ -26,14 +26,7 @@ export default function Stats() {
     ;(async () => {
       setLoading(true)
       setError(null)
-      const { data: userData } = await supabase.auth.getUser()
-      const userId = userData.user?.id
-      if (!userId) {
-        if (!mounted) return
-        setError('Sign in to view your stats')
-        setLoading(false)
-        return
-      }
+      const userId = FIXED_USER_ID
 
       const now = new Date()
       const startOfYear = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0]

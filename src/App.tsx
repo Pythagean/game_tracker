@@ -1,29 +1,11 @@
 import { HashRouter, Routes, Route, Link } from 'react-router-dom'
-import { useEffect, useState } from 'react'
 import AddGame from '@/pages/AddGame'
 import AddSession from '@/pages/AddSession'
 import Stats from '@/pages/Stats'
 import Auth from '@/pages/Auth'
-import { supabase } from '@/lib/supabase'
 import appStyles from './App.module.css'
 
 export default function App() {
-  const [user, setUser] = useState<any>(null)
-
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      const { data } = await supabase.auth.getUser()
-      if (!mounted) return
-      setUser(data.user)
-    })()
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
-
-    return () => listener.subscription.unsubscribe()
-  }, [])
 
   const navBtnStyle = {
     display: 'inline-flex',
@@ -54,18 +36,6 @@ export default function App() {
             <span style={{ fontSize: 16 }}>📊</span>
             <span>Stats</span>
           </Link>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          {user ? (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <Link to="/auth" style={navBtnStyle} className={appStyles.navBtn}>
-                <span style={{ fontSize: 16 }}>👤</span>
-                <span className={appStyles.onlyIconMobile}>Account</span>
-              </Link>
-            </div>
-          ) : (
-            <Link to="/auth" style={navBtnStyle} className={appStyles.navBtn}>Sign in</Link>
-          )}
-        </div>
         </div>
         
       </nav>

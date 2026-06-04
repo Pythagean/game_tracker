@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '@/lib/supabase'
+import { supabase, FIXED_USER_ID } from '@/lib/supabase'
 import styles from './AddSession.module.css'
 
 function formatIsoDate(d: Date) {
@@ -62,9 +62,7 @@ export default function AddSession() {
   useEffect(() => {
     let mounted = true
     ;(async () => {
-      const { data: userData } = await supabase.auth.getUser()
-      const userId = userData.user?.id
-      if (!userId) return
+      const userId = FIXED_USER_ID
 
       const { data: g } = await supabase
         .from('games')
@@ -230,9 +228,7 @@ export default function AddSession() {
     setError(null)
     if (!newPlayerName.trim()) { setError('Enter a name'); return }
     try {
-      const { data: userData } = await supabase.auth.getUser()
-      const userId = userData.user?.id
-      if (!userId) throw new Error('You must be signed in')
+      const userId = FIXED_USER_ID
 
       const { data, error } = await supabase.from('players').insert({ name: newPlayerName.trim(), user_id: userId }).select('player_id, name').single()
       if (error) throw error
@@ -252,9 +248,7 @@ export default function AddSession() {
 
     setSaving(true)
     try {
-      const { data: userData } = await supabase.auth.getUser()
-      const userId = userData.user?.id
-      if (!userId) throw new Error('You must be signed in')
+      const userId = FIXED_USER_ID
 
       const { data, error } = await supabase.from('sessions').insert({
         game_id: selectedGameId,

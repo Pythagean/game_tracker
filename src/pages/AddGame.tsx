@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { searchIgdb, igdbCoverUrl, igdbReleaseDate } from '@/lib/igdb'
-import { supabase } from '@/lib/supabase'
+import { supabase, FIXED_USER_ID } from '@/lib/supabase'
 import type { IgdbGame } from '@/types/igdb'
 import styles from './AddGame.module.css'
 
@@ -65,12 +65,6 @@ export default function AddGame() {
     setSaveSuccess(false)
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) throw new Error('You must be logged in to add a game.')
-
       const releaseDate = igdbReleaseDate(selected.first_release_date)
 
       // Upsert lookup rows for publishers, developers, franchise, then insert the game
@@ -125,7 +119,7 @@ export default function AddGame() {
           cover_url: coverUrl,
           publisher_id: publisherId,
           franchise_id: franchiseId,
-          user_id: user.id,
+          user_id: FIXED_USER_ID,
         })
         .select('game_id')
         .single()

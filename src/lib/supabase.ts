@@ -8,3 +8,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// Hardcoded user_id to use instead of authentication
+export const FIXED_USER_ID = '17a87e84-cecb-44fa-9d43-476c8ad9954f'
