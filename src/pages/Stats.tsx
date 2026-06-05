@@ -85,8 +85,8 @@ export default function Stats() {
         
         // platform aggregate (for full year)
         if (platformId) {
-          const p = platformMap.get(platformId) || { name: platformName, minutes: 0 }
-          platformMap.set(platformId, { name: p.name, minutes: p.minutes + minutes })
+          const p = platformMap.get(platformId) || { platform_id: platformId, name: platformName, minutes: 0 }
+          platformMap.set(platformId, { platform_id: p.platform_id, name: p.name, minutes: p.minutes + minutes })
           platformSum += minutes
         }
         
@@ -148,12 +148,6 @@ export default function Stats() {
     })()
     return () => { mounted = false }
   }, [])
-
-  function chunkIntoColumns<T>(items: T[], colSize = 5) {
-    const cols: T[][] = []
-    for (let i = 0; i < items.length; i += colSize) cols.push(items.slice(i, i + colSize))
-    return cols
-  }
 
   function renderColumns(list: { title: string; minutes: number; cover_url?: string }[]) {
     if (list.length === 0) return null
