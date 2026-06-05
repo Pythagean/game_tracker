@@ -11,6 +11,7 @@ function formatDuration(minutes: number) {
 
 export default function Stats() {
   const [activeTab, setActiveTab] = useState<'month' | 'platform' | 'gamemode'>('month')
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -34,10 +35,8 @@ export default function Stats() {
       setLoading(true)
       setError(null)
       const userId = FIXED_USER_ID
-
-      const now = new Date()
-      const startOfYear = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0]
-      const endOfYear = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0]
+      const startOfYear = new Date(selectedYear, 0, 1).toISOString().split('T')[0]
+      const endOfYear = new Date(selectedYear, 11, 31).toISOString().split('T')[0]
 
       const { data: sessions, error } = await supabase
         .from('sessions')
@@ -56,11 +55,11 @@ export default function Stats() {
       const list = (sessions as any[]) || []
 
       // determine month boundaries
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
-      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0]
-      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0]
-
+      const now = new Date()
+      const monthStart = new Date(selectedYear, now.getMonth(), 1).toISOString().split('T')[0]
+      const monthEnd = new Date(selectedYear, now.getMonth() + 1, 0).toISOString().split('T')[0]
+      const lastMonthStart = new Date(selectedYear, now.getMonth() - 1, 1).toISOString().split('T')[0]
+      const lastMonthEnd = new Date(selectedYear, now.getMonth(), 0).toISOString().split('T')[0]
       const monthMap = new Map<string, { minutes: number; cover?: string }>()
       const lastMonthMap = new Map<string, { minutes: number; cover?: string }>()
       const yearMap = new Map<string, { minutes: number; cover?: string }>()
@@ -147,7 +146,7 @@ export default function Stats() {
       setLoading(false)
     })()
     return () => { mounted = false }
-  }, [])
+  }, [selectedYear])
 
   function renderColumns(list: { title: string; minutes: number; cover_url?: string }[]) {
     if (list.length === 0) return null
@@ -225,60 +224,84 @@ export default function Stats() {
           }
         }
       `}</style>
-      <h1>Stats</h1>
-      
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid #e5e7eb' }}>
-        <button
-          onClick={() => setActiveTab('month')}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 24 }}>
+        <h1 style={{ margin: 0 }}>Stats</h1>
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(Number(e.target.value))}
           style={{
-            padding: '8px 16px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'month' ? '2px solid #6366f1' : 'transparent',
-            color: activeTab === 'month' ? '#6366f1' : '#666',
-            fontWeight: activeTab === 'month' ? 600 : 400,
-            cursor: 'pointer',
+            padding: '8px 12px',
             fontSize: '1rem',
+            borderRadius: 4,
+            border: '1px solid #e5e7eb',
+            backgroundColor: '#ffffff',
+            cursor: 'pointer',
           }}
         >
-          By Month
-        </button>
-        <button
-          onClick={() => setActiveTab('platform')}
-          style={{
-            padding: '8px 16px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'platform' ? '2px solid #6366f1' : 'transparent',
-            color: activeTab === 'platform' ? '#6366f1' : '#666',
-            fontWeight: activeTab === 'platform' ? 600 : 400,
-            cursor: 'pointer',
-            fontSize: '1rem',
-          }}
-        >
-          By Platform
-        </button>
-        <button
-          onClick={() => setActiveTab('gamemode')}
-          style={{
-            padding: '8px 16px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'gamemode' ? '2px solid #6366f1' : 'transparent',
-            color: activeTab === 'gamemode' ? '#6366f1' : '#666',
-            fontWeight: activeTab === 'gamemode' ? 600 : 400,
-            cursor: 'pointer',
-            fontSize: '1rem',
-          }}
-        >
-          By Game Mode
-        </button>
+          {Array.from({ length: new Date().getFullYear() - 2019 + 1 }, (_, i) => 2019 + i).reverse().map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
       </div>
+      
+      {selectedYear === new Date().getFullYear() && (
+        <>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid #e5e7eb' }}>
+            <button
+              onClick={() => setActiveTab('month')}
+              style={{
+                padding: '8px 16px',
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === 'month' ? '2px solid #6366f1' : 'transparent',
+                color: activeTab === 'month' ? '#6366f1' : '#666',
+                fontWeight: activeTab === 'month' ? 600 : 400,
+                cursor: 'pointer',
+                fontSize: '1rem',
+              }}
+            >
+              By Month
+            </button>
+            <button
+              onClick={() => setActiveTab('platform')}
+              style={{
+                padding: '8px 16px',
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === 'platform' ? '2px solid #6366f1' : 'transparent',
+                color: activeTab === 'platform' ? '#6366f1' : '#666',
+                fontWeight: activeTab === 'platform' ? 600 : 400,
+                cursor: 'pointer',
+                fontSize: '1rem',
+              }}
+            >
+              By Platform
+            </button>
+            <button
+              onClick={() => setActiveTab('gamemode')}
+              style={{
+                padding: '8px 16px',
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === 'gamemode' ? '2px solid #6366f1' : 'transparent',
+                color: activeTab === 'gamemode' ? '#6366f1' : '#666',
+                fontWeight: activeTab === 'gamemode' ? 600 : 400,
+                cursor: 'pointer',
+                fontSize: '1rem',
+              }}
+            >
+              By Game Mode
+            </button>
+          </div>
+        </>
+      )}
 
       {loading && <div>Loading…</div>}
       {error && <div style={{ color: '#dc2626' }}>{error}</div>}
 
-      {!loading && !error && activeTab === 'month' && (
+      {!loading && !error && selectedYear === new Date().getFullYear() && activeTab === 'month' && (
         <div>
           <section style={{ marginBottom: 20 }}>
             <h2>Games Played in {thisMonthLabel}</h2>
@@ -300,7 +323,7 @@ export default function Stats() {
         </div>
       )}
 
-      {!loading && !error && activeTab === 'platform' && (
+      {!loading && !error && selectedYear === new Date().getFullYear() && activeTab === 'platform' && (
         <div>
           <section>
             <h2>Playtime by Platform in {thisYearLabel}</h2>
@@ -310,12 +333,22 @@ export default function Stats() {
         </div>
       )}
 
-      {!loading && !error && activeTab === 'gamemode' && (
+      {!loading && !error && selectedYear === new Date().getFullYear() && activeTab === 'gamemode' && (
         <div>
           <section>
             <h2>Playtime by Game Mode in {thisYearLabel}</h2>
             <div className={styles.hint} style={{ fontWeight: 700, fontSize: '1.05rem', paddingBottom: 8, marginBottom: 12 }}>{formatDuration(yearGameModeMinutes)} total</div>
             {yearGameModes.length === 0 ? <div className={styles.hint}>No game modes recorded this year.</div> : renderGameModes(yearGameModes)}
+          </section>
+        </div>
+      )}
+
+      {!loading && !error && selectedYear !== new Date().getFullYear() && (
+        <div>
+          <section>
+            <h2>Games Played in {selectedYear}</h2>
+            <div className={styles.hint} style={{ fontWeight: 700, fontSize: '1.05rem', paddingBottom: 8, marginBottom: 12 }}>{formatDuration(yearMinutes)} total</div>
+            {yearGames.length === 0 ? <div className={styles.hint}>No games recorded in {selectedYear}.</div> : renderColumns(yearGames)}
           </section>
         </div>
       )}
