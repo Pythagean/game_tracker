@@ -64,7 +64,7 @@ export default function Stats() {
       const monthMap = new Map<string, { minutes: number; cover?: string }>()
       const lastMonthMap = new Map<string, { minutes: number; cover?: string }>()
       const yearMap = new Map<string, { minutes: number; cover?: string }>()
-      const platformMap = new Map<number, { name: string; minutes: number }>()
+      const platformMap = new Map<number, { platform_id: number; name: string; minutes: number }>()
       const gameModeMap = new Map<string, number>()
       let monthSum = 0
       let lastMonthSum = 0
