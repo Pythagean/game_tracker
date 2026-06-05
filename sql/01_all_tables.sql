@@ -172,6 +172,10 @@ DROP POLICY IF EXISTS "Users can select own games" ON public.games;
 CREATE POLICY "Users can select own games"
     ON public.games FOR SELECT TO authenticated USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "Unauthenticated users can select by user_id" ON public.games;
+CREATE POLICY "Unauthenticated users can select by user_id"
+    ON public.games FOR SELECT TO public USING (TRUE);
+
 DROP POLICY IF EXISTS "Users can insert own games" ON public.games;
 CREATE POLICY "Users can insert own games"
     ON public.games FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
@@ -241,6 +245,10 @@ ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can select own sessions" ON public.sessions;
 CREATE POLICY "Users can select own sessions"
     ON public.sessions FOR SELECT TO authenticated USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Unauthenticated users can select by user_id" ON public.sessions;
+CREATE POLICY "Unauthenticated users can select by user_id"
+    ON public.sessions FOR SELECT TO public USING (TRUE);
 
 DROP POLICY IF EXISTS "Users can insert own sessions" ON public.sessions;
 CREATE POLICY "Users can insert own sessions"

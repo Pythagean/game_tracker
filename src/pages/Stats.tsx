@@ -170,12 +170,13 @@ export default function Stats() {
 
   function renderPlatforms(list: { platform_id: number; name: string; minutes: number }[]) {
     if (list.length === 0) return null
+    const baseUrl = import.meta.env.BASE_URL
     return (
       <div className="platforms-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(125px, 1fr))', gap: 32 }}>
         {list.map((p) => (
           <div key={p.platform_id} style={{ display: 'flex', flexDirection: 'column', textAlign: 'center' }}>
             <div style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderWidth: 2, borderStyle: 'solid', borderRadius: 6, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: 4 }}>
-              <img src={`/game_tracker/public/platforms/${encodeURIComponent(p.name)}.png`} alt={p.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              <img src={`${baseUrl}platforms/${encodeURIComponent(p.name)}.png`} alt={p.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
             </div>
             <strong style={{ fontSize: '0.9rem', marginBottom: 4, wordWrap: 'break-word', overflow: 'visible', whiteSpace: 'normal' }}>{p.name}</strong>
             <span style={{ fontSize: '0.85rem', color: '#666' }}>{formatDuration(p.minutes)}</span>
@@ -187,12 +188,13 @@ export default function Stats() {
 
   function renderGameModes(list: { name: string; minutes: number }[]) {
     if (list.length === 0) return null
+    const baseUrl = import.meta.env.BASE_URL
     return (
       <div className="gamemodes-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(125px, 1fr))', gap: 24, paddingRight: 24 }}>
         {list.map((gm) => (
           <div key={gm.name} style={{ display: 'flex', flexDirection: 'column', textAlign: 'center' }}>
             <div style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderWidth: 2, borderStyle: 'solid', borderRadius: 6, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: 4, boxSizing: 'border-box' }}>
-              <img src={`/game_tracker/public/game_modes/${encodeURIComponent(gm.name)}.png`} alt={gm.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              <img src={`${baseUrl}game_modes/${encodeURIComponent(gm.name)}.png`} alt={gm.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
             </div>
             <strong style={{ fontSize: '0.9rem', marginBottom: 4, wordWrap: 'break-word', overflow: 'visible', whiteSpace: 'normal' }}>{gm.name}</strong>
             <span style={{ fontSize: '0.85rem', color: '#666' }}>{formatDuration(gm.minutes)}</span>
