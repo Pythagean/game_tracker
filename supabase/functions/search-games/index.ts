@@ -44,7 +44,7 @@ serve(async (req) => {
     return new Response(null, {
       headers: {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, content-type",
+        "Access-Control-Allow-Headers": "authorization, apikey, content-type",
       },
     });
   }
@@ -56,7 +56,11 @@ serve(async (req) => {
     if (!clientId || !clientSecret) {
       return new Response(JSON.stringify({ error: "IGDB credentials not configured" }), {
         status: 500,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+        },
       });
     }
 
@@ -65,7 +69,11 @@ serve(async (req) => {
     if (!query || query.trim().length < 2) {
       return new Response(JSON.stringify({ error: "Query must be at least 2 characters" }), {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+        },
       });
     }
 
@@ -100,13 +108,18 @@ serve(async (req) => {
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, apikey, content-type",
       },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+      },
     });
   }
 });
