@@ -9,11 +9,23 @@ function formatDuration(minutes: number) {
   return h > 0 ? `${h}h ${rem}m` : `${rem}m`
 }
 
+interface SelectedGameDetail {
+  title: string
+  cover_url?: string
+  minutes: number
+  lastPlayedDate?: string
+  lastPlayedTime?: string
+  firstPlayedDate?: string
+  firstPlayedTime?: string
+  sessions?: Array<{ start_date: string; duration_minutes: number }>
+}
+
 export default function Stats() {
   const [activeTab, setActiveTab] = useState<'month' | 'platform' | 'gamemode'>('month')
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedGame, setSelectedGame] = useState<SelectedGameDetail | null>(null)
 
   const [monthGames, setMonthGames] = useState<{ title: string; minutes: number; cover_url?: string }[]>([])
   const [monthMinutes, setMonthMinutes] = useState<number>(0)
@@ -148,17 +160,84 @@ export default function Stats() {
     return () => { mounted = false }
   }, [selectedYear])
 
+  async function handleGameClick(gameTitle: string, coverUrl: string | undefined) {
+    const userId = FIXED_USER_ID
+
+    // First, get the game_id for this title
+    const { data: gameData } = await supabase
+      .from('games')
+      .select('game_id')
+      .eq('title', gameTitle)
+      .single()
+
+    let lastPlayedDate = ''
+    let lastPlayedTime = ''
+    let firstPlayedDate = ''
+    let firstPlayedTime = ''
+    let totalPlaytimeMinutes = 0
+    let allSessions: Array<{ start_date: string; duration_minutes: number }> = []
+
+    if (gameData?.game_id) {
+      // Fetch all sessions for this game
+      const { data: sessions } = await supabase
+        .from('sessions')
+        .select('start_date, start_time, duration_minutes')
+        .eq('user_id', userId)
+        .eq('game_id', gameData.game_id)
+        .order('start_date', { ascending: false })
+
+      if (sessions && sessions.length > 0) {
+        allSessions = sessions as any[]
+        const lastDate = new Date(`${sessions[0].start_date}T${sessions[0].start_time}`)
+        lastPlayedDate = lastDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        lastPlayedTime = lastDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+
+        const firstDate = new Date(`${sessions[sessions.length - 1].start_date}T${sessions[sessions.length - 1].start_time}`)
+        firstPlayedDate = firstDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        firstPlayedTime = firstDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+
+        totalPlaytimeMinutes = sessions.reduce((sum, s) => sum + (Number(s.duration_minutes) || 0), 0)
+      }
+    }
+
+    setSelectedGame({
+      title: gameTitle,
+      cover_url: coverUrl,
+      minutes: totalPlaytimeMinutes,
+      lastPlayedDate,
+      lastPlayedTime,
+      firstPlayedDate,
+      firstPlayedTime,
+      sessions: allSessions
+    })
+  }
+
   function renderColumns(list: { title: string; minutes: number; cover_url?: string }[]) {
     if (list.length === 0) return null
     return (
       <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(125px, 1fr))', gap: 16 }}>
         {list.map((g) => (
           <div key={g.title} style={{ display: 'flex', flexDirection: 'column', textAlign: 'center' }}>
-            {g.cover_url ? (
-              <img src={g.cover_url.replace(/^\/\//, 'https://')} alt="cover" style={{ width: '100%', height: 'auto', borderRadius: 6, marginBottom: 8, aspectRatio: '3/4', objectFit: 'cover' }} />
-            ) : (
-              <div style={{ width: '100%', aspectRatio: '3/4', backgroundColor: '#e5e7eb', borderRadius: 6, marginBottom: 8 }} />
-            )}
+            <div 
+              onClick={() => handleGameClick(g.title, g.cover_url)}
+              style={{ cursor: 'pointer' }}
+              onMouseEnter={(e) => {
+                if ((e.target as HTMLElement).querySelector('img')) {
+                  ((e.target as HTMLElement).querySelector('img') as HTMLImageElement).style.opacity = '1'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if ((e.target as HTMLElement).querySelector('img')) {
+                  ((e.target as HTMLElement).querySelector('img') as HTMLImageElement).style.opacity = '0.9'
+                }
+              }}
+            >
+              {g.cover_url ? (
+                <img src={g.cover_url.replace(/^\/\//, 'https://')} alt="cover" style={{ width: '100%', height: 'auto', borderRadius: 6, marginBottom: 8, aspectRatio: '3/4', objectFit: 'cover', opacity: 0.9, transition: 'opacity 0.2s' }} />
+              ) : (
+                <div style={{ width: '100%', aspectRatio: '3/4', backgroundColor: '#e5e7eb', borderRadius: 6, marginBottom: 8 }} />
+              )}
+            </div>
             <strong style={{ fontSize: '0.9rem', marginBottom: 4, wordWrap: 'break-word', overflow: 'visible', whiteSpace: 'normal' }}>{g.title}</strong>
             <span style={{ fontSize: '0.85rem', color: '#666' }}>{formatDuration(g.minutes)}</span>
           </div>
@@ -199,6 +278,93 @@ export default function Stats() {
             <span style={{ fontSize: '0.85rem', color: '#666' }}>{formatDuration(gm.minutes)}</span>
           </div>
         ))}
+      </div>
+    )
+  }
+
+  function renderPlaytimeGraph(sessions: Array<{ start_date: string; duration_minutes: number }> | undefined) {
+    if (!sessions || sessions.length === 0) return null
+
+    // Group by month
+    const monthMap = new Map<string, number>()
+    const monthOrder: string[] = []
+
+    sessions.forEach(session => {
+      const date = new Date(session.start_date)
+      const monthKey = date.toLocaleString('default', { year: '2-digit', month: 'short' })
+      
+      if (!monthMap.has(monthKey)) {
+        monthOrder.push(monthKey)
+      }
+      
+      const current = monthMap.get(monthKey) || 0
+      monthMap.set(monthKey, current + (Number(session.duration_minutes) || 0))
+    })
+
+    // Sort by date
+    monthOrder.sort((a, b) => {
+      const [monthA, yearA] = a.split(' ')
+      const [monthB, yearB] = b.split(' ')
+      const dateA = new Date(`20${yearA}-${monthA}-01`)
+      const dateB = new Date(`20${yearB}-${monthB}-01`)
+      return dateA.getTime() - dateB.getTime()
+    })
+
+    // monthOrder.reverse()
+
+    // console.log('Month Map:', monthMap)
+
+    // Find max for scaling
+    const maxMinutes = Math.max(...Array.from(monthMap.values()))
+    if (maxMinutes === 0) return null
+
+    console.log('maxMinutes:', maxMinutes)
+
+    return (
+      <div style={{ marginBottom: 16, marginTop: 16, width: '100%', alignItems: 'center', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 8 }}>Playtime by Month</div>
+        <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 120, justifyContent: 'space-between', width: '100%', }}>
+          {monthOrder.map(monthKey => {
+            const minutes = monthMap.get(monthKey) || 0
+            const barHeight = Math.max((minutes / maxMinutes) * 90, 4)
+            return (
+              <div
+                key={monthKey}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 4,
+                  minWidth: 0
+                }}
+              >
+                <div
+                  title={`${monthKey}: ${formatDuration(minutes)}`}
+                  style={{
+                    width: '100%',
+                    height: `${barHeight}px`,
+                    backgroundColor: '#6366f1',
+                    borderRadius: 2,
+                    transition: 'opacity 0.2s',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.target as HTMLElement).style.opacity = '0.7'
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.target as HTMLElement).style.opacity = '1'
+                  }}
+                />
+                {monthOrder.length < 15 && (
+                  <div style={{ fontSize: '0.65rem', color: '#999', textAlign: 'center', width: '100%', wordBreak: 'break-word' }}>
+                    {monthKey}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
     )
   }
@@ -350,6 +516,105 @@ export default function Stats() {
             <div className={styles.hint} style={{ fontWeight: 700, fontSize: '1.05rem', paddingBottom: 8, marginBottom: 12 }}>{formatDuration(yearMinutes)} total</div>
             {yearGames.length === 0 ? <div className={styles.hint}>No games recorded in {selectedYear}.</div> : renderColumns(yearGames)}
           </section>
+        </div>
+      )}
+
+      {selectedGame && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}
+          onClick={() => setSelectedGame(null)}
+        >
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: 12,
+            padding: 24,
+            maxWidth: 400,
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            width: '80%',
+            alignItems: 'center',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {selectedGame.cover_url ? (
+              <img 
+                src={selectedGame.cover_url.replace(/^\/\//, 'https://')} 
+                alt={selectedGame.title}
+                style={{ 
+                  width: '50%', 
+                  height: 'auto', 
+                  borderRadius: 8, 
+                  marginBottom: 16
+                }} 
+              />
+            ) : (
+              <div style={{ 
+                width: '50%',
+                backgroundColor: '#e5e7eb', 
+                borderRadius: 8, 
+                marginBottom: 16 
+              }} />
+            )}
+            <h2 style={{ margin: '0 0 16px 0', fontSize: '1.5rem' }}>{selectedGame.title}</h2>
+            
+            <div style={{ marginBottom: 12, alignItems: 'center', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 4 }}>Total Playtime</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>{formatDuration(selectedGame.minutes)}</div>
+            </div>
+
+            {selectedGame.lastPlayedDate && (
+              <div style={{ marginBottom: 12, alignItems: 'center', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 4 }}>Last Played</div>
+                <div style={{ fontSize: '1rem' }}>
+                  {selectedGame.lastPlayedDate}
+                  {selectedGame.lastPlayedTime && ` at ${selectedGame.lastPlayedTime}`}
+                </div>
+              </div>
+            )}
+
+            {selectedGame.firstPlayedDate && (
+              <div style={{ marginBottom: 12, alignItems: 'center', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 4 }}>First Played</div>
+                <div style={{ fontSize: '1rem' }}>
+                  {selectedGame.firstPlayedDate}
+                  {selectedGame.firstPlayedTime && ` at ${selectedGame.firstPlayedTime}`}
+                </div>
+              </div>
+            )}
+
+            {renderPlaytimeGraph(selectedGame.sessions)}
+
+            <button
+              onClick={() => setSelectedGame(null)}
+              style={{
+                width: '40%',
+                padding: '10px 16px',
+                marginTop: 16,
+                backgroundColor: '#6366f1',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                fontSize: '1rem',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
     </div>
