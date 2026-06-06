@@ -26,11 +26,11 @@ export default function App() {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Link to="/add-session" style={navBtnStyle} className={appStyles.navBtn}>
             <span style={{ fontSize: 16 }}>🕒</span>
-            <span>+ Session</span>
+            <span>Add Session</span>
           </Link>
           <Link to="/add-game" style={navBtnStyle} className={appStyles.navBtn}>
             <span style={{ fontSize: 16 }}>🎮</span>
-            <span>+ Game</span>
+            <span>Add Game</span>
           </Link>
           <Link to="/stats" style={navBtnStyle} className={appStyles.navBtn}>
             <span style={{ fontSize: 16 }}>📊</span>
@@ -40,11 +40,11 @@ export default function App() {
         
       </nav>
       <Routes>
+        <Route path="/add-session" element={<AddSession />} />
         <Route path="/add-game" element={<AddGame />} />
         <Route path="/stats" element={<Stats />} />
-        <Route path="/add-session" element={<AddSession />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/" element={<AddGame />} />
+        <Route path="/" element={<AddSession />} />
       </Routes>
     </HashRouter>
   )
