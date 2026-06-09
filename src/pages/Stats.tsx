@@ -9,6 +9,12 @@ function formatDuration(minutes: number) {
   return h > 0 ? `${h}h ${rem}m` : `${rem}m`
 }
 
+function formatDurationAsHours(minutes: number) {
+  const m = Math.max(0, Math.round(minutes || 0))
+  const hours = m / 60
+  return hours.toFixed(0) + 'h'
+}
+
 interface SelectedGameDetail {
   title: string
   cover_url?: string
@@ -17,6 +23,9 @@ interface SelectedGameDetail {
   lastPlayedTime?: string
   firstPlayedDate?: string
   firstPlayedTime?: string
+  daysSinceFirstPlayed?: number
+  numSessions?: number
+  avgSessionLength?: number
   sessions?: Array<{ start_date: string; duration_minutes: number }>
 }
 
@@ -175,6 +184,7 @@ export default function Stats() {
     let firstPlayedDate = ''
     let firstPlayedTime = ''
     let totalPlaytimeMinutes = 0
+    let daysDiff = 0
     let allSessions: Array<{ start_date: string; duration_minutes: number }> = []
 
     if (gameData?.game_id) {
@@ -196,9 +206,13 @@ export default function Stats() {
         firstPlayedDate = firstDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
         firstPlayedTime = firstDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
 
+        daysDiff = Math.floor((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24))
+
         totalPlaytimeMinutes = sessions.reduce((sum, s) => sum + (Number(s.duration_minutes) || 0), 0)
       }
     }
+
+    const avgSessionLength = allSessions.length > 0 ? totalPlaytimeMinutes / allSessions.length : 0
 
     setSelectedGame({
       title: gameTitle,
@@ -208,6 +222,9 @@ export default function Stats() {
       lastPlayedTime,
       firstPlayedDate,
       firstPlayedTime,
+      daysSinceFirstPlayed: daysDiff,
+      numSessions: allSessions.length,
+      avgSessionLength,
       sessions: allSessions
     })
   }
@@ -320,6 +337,21 @@ export default function Stats() {
 
     console.log('maxMinutes:', maxMinutes)
 
+    // Determine which bars should show values
+    const numBars = monthOrder.length
+    const showAllValues = numBars < 15
+    const showTopThree = numBars >= 15 && numBars <= 20
+    let topThreeKeys: Set<string> = new Set()
+    
+    if (showTopThree) {
+      // Find top 3 bars by minutes
+      const sorted = Array.from(monthMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(entry => entry[0])
+      topThreeKeys = new Set(sorted)
+    }
+
     return (
       <div style={{ marginBottom: 16, marginTop: 16, width: '100%', alignItems: 'center', display: 'flex', flexDirection: 'column' }}>
         <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 8 }}>Playtime by Month</div>
@@ -327,6 +359,7 @@ export default function Stats() {
           {monthOrder.map(monthKey => {
             const minutes = monthMap.get(monthKey) || 0
             const barHeight = Math.max((minutes / maxMinutes) * 90, 4)
+            const shouldShowValue = showAllValues || (showTopThree && topThreeKeys.has(monthKey))
             return (
               <div
                 key={monthKey}
@@ -347,7 +380,10 @@ export default function Stats() {
                     backgroundColor: '#6366f1',
                     borderRadius: 2,
                     transition: 'opacity 0.2s',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
                   onMouseEnter={(e) => {
                     (e.target as HTMLElement).style.opacity = '0.7'
@@ -355,7 +391,13 @@ export default function Stats() {
                   onMouseLeave={(e) => {
                     (e.target as HTMLElement).style.opacity = '1'
                   }}
-                />
+                >
+                  {shouldShowValue && barHeight > 20 && (
+                    <div style={{ fontSize: '0.65rem', color: 'white', fontWeight: 500, textAlign: 'center' }}>
+                      {formatDurationAsHours(minutes)}
+                    </div>
+                  )}
+                </div>
                 {monthOrder.length < 15 && (
                   <div style={{ fontSize: '0.65rem', color: '#999', textAlign: 'center', width: '100%', wordBreak: 'break-word' }}>
                     {monthKey}
@@ -575,25 +617,52 @@ export default function Stats() {
               <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>{formatDuration(selectedGame.minutes)}</div>
             </div>
 
-            {selectedGame.lastPlayedDate && (
-              <div style={{ marginBottom: 12, alignItems: 'center', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 4 }}>Last Played</div>
-                <div style={{ fontSize: '1rem' }}>
-                  {selectedGame.lastPlayedDate}
-                  {selectedGame.lastPlayedTime && ` at ${selectedGame.lastPlayedTime}`}
+            {(selectedGame.lastPlayedDate || selectedGame.firstPlayedDate) && (
+              <div style={{ marginBottom: 12, alignItems: 'center', display: 'flex', flexDirection: 'column', width: '100%', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'row', gap: 32, width: '100%', justifyContent: 'center', marginBottom: selectedGame.daysSinceFirstPlayed !== undefined ? 8 : 0 }}>
+                  {selectedGame.firstPlayedDate && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 4 }}>First Played</div>
+                      <div style={{ fontSize: '1rem' }}>
+                        {selectedGame.firstPlayedDate}
+                      </div>
+                    </div>
+                  )}
+                  {selectedGame.lastPlayedDate && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 4 }}>Last Played</div>
+                      <div style={{ fontSize: '1rem' }}>
+                        {selectedGame.lastPlayedDate}
+                      </div>
+                    </div>
+                  )}
                 </div>
+                {selectedGame.daysSinceFirstPlayed !== undefined && (
+                  <div style={{ fontSize: '0.75rem', color: '#999' }}>
+                    {selectedGame.daysSinceFirstPlayed} days since first played
+                  </div>
+                )}
               </div>
             )}
 
-            {selectedGame.firstPlayedDate && (
-              <div style={{ marginBottom: 12, alignItems: 'center', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 4 }}>First Played</div>
-                <div style={{ fontSize: '1rem' }}>
-                  {selectedGame.firstPlayedDate}
-                  {selectedGame.firstPlayedTime && ` at ${selectedGame.firstPlayedTime}`}
+            <div style={{ marginBottom: 12, alignItems: 'center', display: 'flex', flexDirection: 'row', gap: 32, width: '100%', justifyContent: 'center' }}>
+              {selectedGame.numSessions !== undefined && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 4 }}>Sessions</div>
+                  <div style={{ fontSize: '1rem' }}>
+                    {selectedGame.numSessions}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+              {selectedGame.avgSessionLength !== undefined && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 4 }}>Avg Session</div>
+                  <div style={{ fontSize: '1rem' }}>
+                    {formatDuration(selectedGame.avgSessionLength)}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {renderPlaytimeGraph(selectedGame.sessions)}
 
