@@ -7,7 +7,7 @@
 }
 
 .row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
-.label { min-width: 100px; font-weight: 600; }
+.label { min-width: 85px; font-weight: 600; }
 .input { padding: 0.5rem; border-radius: 6px; border: 1px solid #d1d5db; }
 
 .playerSelect { min-width: 160px; position: relative }

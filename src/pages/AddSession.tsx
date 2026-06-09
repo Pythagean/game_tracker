@@ -363,7 +363,7 @@ export default function AddSession() {
       </div>
 
       <div className={styles.row}>
-        <div className={styles.label}>Game Mode</div>
+        <div className={styles.label}>Play Mode</div>
         <select className={styles.input} value={gameMode} onChange={(e) => setGameMode(e.target.value)}>
           <option>Singleplayer</option>
           <option>Local Multiplayer</option>
