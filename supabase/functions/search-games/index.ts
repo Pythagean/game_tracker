@@ -38,16 +38,32 @@ async function getTwitchToken(clientId: string, clientSecret: string): Promise<s
   return cachedToken.token;
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+};
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, apikey, content-type",
-      },
+      headers: corsHeaders,
     });
   }
+
+  if (req.method !== "POST") {
+  return new Response(
+    JSON.stringify({ error: "Method not allowed" }),
+    {
+      status: 405,
+      headers: {
+        "Content-Type": "application/json",
+        ...corsHeaders,
+      },
+    }
+  );
+}
 
   try {
     const clientId = Deno.env.get("IGDB_CLIENT_ID");
@@ -58,8 +74,7 @@ serve(async (req) => {
         status: 500,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+          ...corsHeaders,
         },
       });
     }
@@ -71,14 +86,17 @@ serve(async (req) => {
         status: 400,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+          ...corsHeaders,
         },
       });
     }
 
     // Sanitise the query to prevent IGDB API injection
-    const safeQuery = query.replace(/[^a-zA-Z0-9 ':.\-]/g, "").trim().slice(0, 100);
+    const safeQuery = query
+        .replace(/"/g, '\\"')
+        .trim()
+        .slice(0, 100);
+    //const safeQuery = query.replace(/[^a-zA-Z0-9 ':.\-]/g, "").trim().slice(0, 100);
 
     const accessToken = await getTwitchToken(clientId, clientSecret);
 
@@ -107,8 +125,7 @@ serve(async (req) => {
     return new Response(JSON.stringify(games), {
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+        ...corsHeaders,
       },
     });
   } catch (err) {
@@ -117,8 +134,7 @@ serve(async (req) => {
       status: 500,
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+        ...corsHeaders,
       },
     });
   }
