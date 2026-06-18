@@ -3,6 +3,7 @@ import AddGame from '@/pages/AddGame'
 import AddSession from '@/pages/AddSession'
 import Stats from '@/pages/Stats'
 import Auth from '@/pages/Auth'
+import Dashboard from '@/pages/Dashboard'
 import appStyles from './App.module.css'
 
 export default function App() {
@@ -36,6 +37,10 @@ export default function App() {
             <span style={{ fontSize: 16 }}>📊</span>
             <span>Stats</span>
           </Link>
+          <Link to="/dashboard" style={navBtnStyle} className={appStyles.navBtn}>
+            <span style={{ fontSize: 16 }}>📊</span>
+            <span>Dashboard</span>
+          </Link>
         </div>
         
       </nav>
@@ -44,6 +49,7 @@ export default function App() {
         <Route path="/add-game" element={<AddGame />} />
         <Route path="/stats" element={<Stats />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/" element={<AddSession />} />
       </Routes>
     </HashRouter>
