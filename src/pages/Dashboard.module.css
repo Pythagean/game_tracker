@@ -53,6 +53,12 @@
   height: 200px;
 }
 
+
+
+.gameChartWrapper {
+  height: 700px;
+}
+
 .largeChartWrapper {
   height: 320px;
 }

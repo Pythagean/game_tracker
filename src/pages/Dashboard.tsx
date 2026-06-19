@@ -12,6 +12,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
+import CalendarHeatmap from 'react-calendar-heatmap'
+import "react-calendar-heatmap/dist/styles.css";
 import styles from './Dashboard.module.css'
 
 interface RawSession {
@@ -153,6 +155,7 @@ export default function Dashboard() {
         .map(([name]) => name),
       players: Array.from(playerHours.entries())
         .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
         .map(([name]) => name),
     }
   }, [rawSessions])
@@ -229,6 +232,7 @@ export default function Dashboard() {
     }
     return Array.from(map.entries())
       .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
       .map(([name, minutes]) => ({ name, hours: parseFloat(formatHours(minutes)), minutes }))
   }, [filteredSessions])
 
@@ -243,6 +247,105 @@ export default function Dashboard() {
       .sort((a, b) => b[1] - a[1])
       .map(([name, minutes]) => ({ name, hours: parseFloat(formatHours(minutes)), minutes }))
   }, [filteredSessions])
+
+  const heatmapData = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const s of filteredSessions) {
+      if (!s.start_date) continue
+      const dateStr = s.start_date.split('T')[0] // Format as YYYY-MM-DD
+      map.set(dateStr, (map.get(dateStr) ?? 0) + s.duration_minutes)
+    }
+    return Array.from(map.entries()).map(([date, minutes]) => ({
+      date,
+      count: Math.round(parseFloat(formatHours(minutes)) * 10) // Scale up for heatmap intensity
+    }))
+  }, [filteredSessions])
+
+  const heatmapStartDate = useMemo(() => {
+    if (filterYear === 'all') {
+      // Find earliest year in data
+      let minYear = new Date().getFullYear()
+      for (const s of rawSessions) {
+        if (s.start_date) {
+          const year = new Date(s.start_date).getFullYear()
+          if (year < minYear) minYear = year
+        }
+      }
+      return new Date(minYear, 0, 1)
+    }
+    return new Date(filterYear as number, 0, 1)
+  }, [filterYear, rawSessions])
+
+  const heatmapEndDate = useMemo(() => {
+    if (filterYear === 'all') {
+      return new Date()
+    }
+    const year = filterYear as number
+    const currentYear = new Date().getFullYear()
+    if (year === currentYear) {
+      return new Date()
+    }
+    return new Date(year, 11, 31)
+  }, [filterYear])
+
+  const kpis = useMemo(() => {
+    const totalMinutes = filteredSessions.reduce((sum, s) => sum + s.duration_minutes, 0)
+    const numSessions = filteredSessions.length
+    const uniqueGames = new Set(filteredSessions.filter(s => s.game).map(s => s.game)).size
+    const avgSessionLength = numSessions > 0 ? totalMinutes / numSessions : 0
+    const uniqueDays = new Set(filteredSessions.map(s => new Date(s.start_date).toDateString())).size
+
+    // Calculate total days in the year (or up to today if current year)
+    let totalDaysInPeriod = 365
+    const currentYear = new Date().getFullYear()
+    
+    if (filterYear !== 'all') {
+      const year = filterYear as number
+      const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0)
+      totalDaysInPeriod = isLeapYear ? 366 : 365
+
+      // If it's the current year, use days up to today
+      if (year === currentYear) {
+        const today = new Date()
+        const startOfYear = new Date(year, 0, 1)
+        totalDaysInPeriod = Math.floor((today.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      }
+    } else {
+      // If 'all' years, sum days for each year in the data
+      totalDaysInPeriod = 0
+      const yearsInData = new Set<number>()
+      for (const s of rawSessions) {
+        if (s.start_date) {
+          yearsInData.add(new Date(s.start_date).getFullYear())
+        }
+      }
+
+      for (const year of yearsInData) {
+        if (year === currentYear) {
+          // For current year, count days up to today
+          const today = new Date()
+          const startOfYear = new Date(year, 0, 1)
+          totalDaysInPeriod += Math.floor((today.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        } else {
+          // For other years, count all 365/366 days
+          const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0)
+          totalDaysInPeriod += isLeapYear ? 366 : 365
+        }
+      }
+    }
+
+    const daysPercentage = totalDaysInPeriod > 0 ? Math.round((uniqueDays / totalDaysInPeriod) * 100) : 0
+
+    return {
+      totalHours: formatHours(totalMinutes),
+      numSessions,
+      uniqueGames,
+      avgSessionMinutes: Math.round(avgSessionLength),
+      uniqueDays,
+      totalDaysInPeriod,
+      daysPercentage,
+    }
+  }, [filteredSessions, filterYear, rawSessions])
 
   const activeFilterCount = [
     filterYear !== 'all', filterMonth !== 'all', filterWeekday !== 'all',
@@ -324,6 +427,91 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* KPI Cards */}
+      {!loading && !error && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 16,
+          marginBottom: 24,
+        }}>
+          <div style={{
+            backgroundColor: '#f0f4ff',
+            border: '1px solid #e0e7ff',
+            borderRadius: 8,
+            padding: '16px',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+              Total Playtime
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#6366f1' }}>
+              {kpis.totalHours}h
+            </div>
+          </div>
+
+          <div style={{
+            backgroundColor: '#f5f0ff',
+            border: '1px solid #ede9fe',
+            borderRadius: 8,
+            padding: '16px',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+              Number of Sessions
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#8b5cf6' }}>
+              {kpis.numSessions}
+            </div>
+          </div>
+
+          <div style={{
+            backgroundColor: '#fdf2f8',
+            border: '1px solid #fbcfe8',
+            borderRadius: 8,
+            padding: '16px',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+              Unique Games Played
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#ec4899' }}>
+              {kpis.uniqueGames}
+            </div>
+          </div>
+
+          <div style={{
+            backgroundColor: '#fffbf0',
+            border: '1px solid #fed7aa',
+            borderRadius: 8,
+            padding: '16px',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+              Avg Session Length
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#f59e0b' }}>
+              {Math.floor(kpis.avgSessionMinutes / 60)}h {kpis.avgSessionMinutes % 60}m
+            </div>
+          </div>
+
+          <div style={{
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #dcfce7',
+            borderRadius: 8,
+            padding: '16px',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+              Days Played
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#10b981' }}>
+              {kpis.uniqueDays}/{kpis.totalDaysInPeriod} ({kpis.daysPercentage}%)
+            </div>
+          </div>
+        </div>
+      )}
+
       {loading && <div className={styles.loadingMessage}>Loading…</div>}
       {error && <div className={styles.errorMessage}>{error}</div>}
 
@@ -345,8 +533,8 @@ export default function Dashboard() {
             </div>
           </section>
 
-          <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>Hours Played per Game</h2>
+          {/* <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Hours Played per Game (Top 20)</h2>
             <div className={styles.sectionSubtitle}>Hours played for each game</div>
             <div className={styles.largeChartWrapper}>
               <ResponsiveContainer width="100%" height="100%">
@@ -356,6 +544,30 @@ export default function Dashboard() {
                   <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#888' }} tickLine={false} axisLine={false} width={36} />
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
                   <Bar dataKey="hours" fill="#06b6d4" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section> */}
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Hours Played per Game (Top 20)</h2>
+            <div className={styles.sectionSubtitle}>Hours played for each game</div>
+            <div className={styles.gameChartWrapper}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  layout="vertical"
+                  data={gameData}
+                  margin={{ top: 8, right: 16, left: 120, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={200}
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
+                  <Bar dataKey="hours" fill="#06b6d4" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -438,6 +650,64 @@ export default function Dashboard() {
               </div>
             </section>
           </div>
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Gaming Calendar Heatmap</h2>
+            <div className={styles.sectionSubtitle}>Daily playtime activity heatmap</div>
+            <div style={{ padding: '16px', backgroundColor: '#fafafa', borderRadius: 8, overflowX: 'auto' }}>
+              <CalendarHeatmap
+                startDate={heatmapStartDate}
+                endDate={heatmapEndDate}
+                values={heatmapData}
+                classForValue={(value: { count: number; }) => {
+                  if (!value) return 'color-empty'
+                  if (value.count < 10) return 'color-scale-1'
+                  if (value.count < 20) return 'color-scale-2'
+                  if (value.count < 30) return 'color-scale-3'
+                  if (value.count < 40) return 'color-scale-4'
+                  return 'color-scale-5'
+                }}
+                titleForValue={(value: { date: string | number | Date; count: any; }) => {
+                  if (!value || !value.date) return 'No data'
+
+                  const date = new Date(value.date)
+                  const formattedDate = date.toLocaleDateString('en-AU', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                  })
+
+                  const hours = ((value.count ?? 0) / 10).toFixed(1)
+
+                  return `${formattedDate}: ${hours} hrs`
+                }}
+                showWeekdayLabels
+              />
+            </div>
+            <style>{`
+              .react-calendar-heatmap .color-empty {
+                fill: #ebedf0;
+              }
+              .react-calendar-heatmap .color-scale-1 {
+                fill: #c6e48b;
+              }
+              .react-calendar-heatmap .color-scale-2 {
+                fill: #7bc96f;
+              }
+              .react-calendar-heatmap .color-scale-3 {
+                fill: #239a3b;
+              }
+              .react-calendar-heatmap .color-scale-4 {
+                fill: #108a30;
+              }
+              .react-calendar-heatmap .color-scale-5 {
+                fill: #0d5a23;
+              }
+              .react-calendar-heatmap .react-calendar-heatmap-weekday-label {
+                font-size: 5px;
+              }
+            `}</style>
+          </section>
         </>
       )}
     </div>

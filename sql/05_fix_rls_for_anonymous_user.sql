@@ -118,3 +118,18 @@ CREATE POLICY "Unauthenticated users can insert platforms"
 DROP POLICY IF EXISTS "Authenticated users can read platforms" ON public.platforms;
 CREATE POLICY "Anyone can read platforms"
     ON public.platforms FOR SELECT TO public USING (true);
+
+-- session_player: Allow unauthenticated users to select/insert/delete
+-- (the app uses a hardcoded FIXED_USER_ID, so user_id filtering is done at app level)
+ALTER TABLE public.session_player ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Unauthenticated users can select session_player" ON public.session_player;
+CREATE POLICY "Unauthenticated users can select session_player"
+    ON public.session_player FOR SELECT TO public USING (true);
+
+DROP POLICY IF EXISTS "Unauthenticated users can insert session_player" ON public.session_player;
+CREATE POLICY "Unauthenticated users can insert session_player"
+    ON public.session_player FOR INSERT TO public WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Unauthenticated users can delete session_player" ON public.session_player;
+CREATE POLICY "Unauthenticated users can delete session_player"
+    ON public.session_player FOR DELETE TO public USING (true);

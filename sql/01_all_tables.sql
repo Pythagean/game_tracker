@@ -459,6 +459,19 @@ CREATE POLICY "Users can delete own session_player"
             AND sessions.user_id = auth.uid()
     ));
 
+-- Allow unauthenticated (public) users to access session_player
+DROP POLICY IF EXISTS "Unauthenticated users can select session_player" ON public.session_player;
+CREATE POLICY "Unauthenticated users can select session_player"
+    ON public.session_player FOR SELECT TO public USING (true);
+
+DROP POLICY IF EXISTS "Unauthenticated users can insert session_player" ON public.session_player;
+CREATE POLICY "Unauthenticated users can insert session_player"
+    ON public.session_player FOR INSERT TO public WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Unauthenticated users can delete session_player" ON public.session_player;
+CREATE POLICY "Unauthenticated users can delete session_player"
+    ON public.session_player FOR DELETE TO public USING (true);
+
 -- 15_public_read_lookups.sql
 -- Allow public (unauthenticated) SELECT on lookup tables
 -- Run this in Supabase SQL editor to permit the frontend to read lookup data without signing in.
