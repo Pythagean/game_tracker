@@ -26,20 +26,20 @@ export default function App() {
       <nav style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #e2e8f0', fontFamily: 'system-ui, sans-serif', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Link to="/add-session" style={navBtnStyle} className={appStyles.navBtn}>
-            <span style={{ fontSize: 16 }}>🕒</span>
-            <span>Add Session</span>
+            <span style={{ fontSize: 14 }}>🕒</span>
+            <span className={appStyles.onlyIconMobile}>Add Session</span>
           </Link>
           <Link to="/add-game" style={navBtnStyle} className={appStyles.navBtn}>
-            <span style={{ fontSize: 16 }}>🎮</span>
-            <span>Add Game</span>
+            <span style={{ fontSize: 14 }}>🎮</span>
+            <span className={appStyles.onlyIconMobile}>Add Game</span>
           </Link>
           <Link to="/stats" style={navBtnStyle} className={appStyles.navBtn}>
-            <span style={{ fontSize: 16 }}>📊</span>
-            <span>Stats</span>
+            <span style={{ fontSize: 14 }}>📊</span>
+            <span className={appStyles.onlyIconMobile}>Stats</span>
           </Link>
           <Link to="/dashboard" style={navBtnStyle} className={appStyles.navBtn}>
-            <span style={{ fontSize: 16 }}>📊</span>
-            <span>Dashboard</span>
+            <span style={{ fontSize: 14 }}>📈</span>
+            <span className={appStyles.onlyIconMobile}>Dashboard</span>
           </Link>
         </div>
         

@@ -49,8 +49,24 @@
   margin-top: 24px;
 }
 
+.chartWrapper {
+  height: 200px;
+}
+
+.largeChartWrapper {
+  height: 320px;
+}
+
 @media (max-width: 768px) {
   .chartsGrid {
     grid-template-columns: 1fr;
+  }
+
+  .chartWrapper {
+    height: 200px;
+  }
+
+  .largeChartWrapper {
+    height: 220px;
   }
 }
