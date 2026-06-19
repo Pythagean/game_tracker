@@ -232,7 +232,7 @@ export default function Dashboard() {
     }
     return Array.from(map.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
+      .slice(0, 10)
       .map(([name, minutes]) => ({ name, hours: parseFloat(formatHours(minutes)), minutes }))
   }, [filteredSessions])
 
@@ -550,21 +550,21 @@ export default function Dashboard() {
           </section> */}
 
           <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>Hours Played per Game (Top 20)</h2>
+            <h2 className={styles.sectionTitle}>Hours Played per Game (Top 10)</h2>
             <div className={styles.sectionSubtitle}>Hours played for each game</div>
             <div className={styles.gameChartWrapper}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   layout="vertical"
                   data={gameData}
-                  margin={{ top: 8, right: 16, left: 120, bottom: 8 }}
+                  margin={{ top: 8, right: 16, left: 40, bottom: 8 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" />
                   <YAxis
                     type="category"
                     dataKey="name"
-                    width={200}
+                    width={60}
                   />
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
                   <Bar dataKey="hours" fill="#06b6d4" />
