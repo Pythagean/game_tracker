@@ -37,16 +37,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     const m = minutes % 60
     const formatted = h > 0 ? `${h}h ${m}m` : `${m}m`
     return (
-      <div style={{
-        backgroundColor: 'white',
-        border: '1px solid #e5e7eb',
-        borderRadius: 6,
-        padding: '8px 12px',
-        fontSize: '0.85rem',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-      }}>
-        <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
-        <div style={{ color: '#6366f1' }}>{formatted}</div>
+      <div className={styles.tooltip}>
+        <div className={styles.tooltipLabel}>{label}</div>
+        <div className={styles.tooltipValue}>{formatted}</div>
       </div>
     )
   }
@@ -56,7 +49,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 const WEEKDAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const MONTH_ORDER = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December']
-const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#ef4444']
+const COLORS = ['#6366f1', '#8b7cf0', '#ec4899', '#f2a541', '#10b981', '#06b6d4', '#3b82f6', '#ef4444']
 
 export default function Dashboard() {
   const [rawSessions, setRawSessions] = useState<RawSession[]>([])
@@ -360,45 +353,24 @@ export default function Dashboard() {
     setFilterPlayedWith('all')
   }
 
-  const selectStyle: React.CSSProperties = {
-    padding: '6px 10px',
-    fontSize: '0.875rem',
-    borderRadius: 6,
-    border: '1px solid #e5e7eb',
-    backgroundColor: '#ffffff',
-    cursor: 'pointer',
-    fontFamily: 'system-ui, sans-serif',
-    minWidth: 120,
-  }
-
   return (
     <div className={styles.container}>
       <h1 className={styles.heading} style={{ marginBottom: 16 }}>Dashboard</h1>
 
       {/* Filter bar */}
-      <div style={{
-        backgroundColor: '#fff',
-        border: '1px solid #e5e7eb',
-        borderRadius: 8,
-        padding: '16px 20px',
-        marginBottom: 24,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#333' }}>Filters</span>
+      <div className={styles.filterBar}>
+        <div className={styles.filterBarHeader}>
+          <span className={styles.filterBarTitle}>Filters</span>
           {activeFilterCount > 0 && (
             <button
               onClick={resetFilters}
-              style={{
-                fontSize: '0.75rem', color: '#6366f1', background: 'none', border: 'none',
-                cursor: 'pointer', padding: 0, textDecoration: 'underline',
-              }}
+              className={styles.clearFiltersBtn}
             >
               Clear all ({activeFilterCount})
             </button>
           )}
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+        <div className={styles.filterGrid}>
           {([
             { label: 'Year', value: filterYear, onChange: (v: string) => setFilterYear(v === 'all' ? 'all' : Number(v)), options: filterOptions.years.map(String) },
             { label: 'Month', value: filterMonth, onChange: setFilterMonth, options: filterOptions.months },
@@ -406,16 +378,12 @@ export default function Dashboard() {
             { label: 'Platform', value: filterPlatform, onChange: setFilterPlatform, options: filterOptions.platforms },
             { label: 'Played With', value: filterPlayedWith, onChange: setFilterPlayedWith, options: filterOptions.players },
           ] as const).map(({ label, value, onChange, options }) => (
-            <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div key={label} className={styles.filterGroup}>
+              <label className={styles.filterLabel}>
                 {label}
               </label>
               <select
-                style={{
-                  ...selectStyle,
-                  borderColor: String(value) !== 'all' ? '#6366f1' : '#e5e7eb',
-                  color: String(value) !== 'all' ? '#6366f1' : 'inherit',
-                }}
+                className={`${styles.filterSelect}${String(value) !== 'all' ? ` ${styles.filterSelectActive}` : ''}`}
                 value={String(value)}
                 onChange={(e) => (onChange as (v: string) => void)(e.target.value)}
               >
@@ -429,83 +397,48 @@ export default function Dashboard() {
 
       {/* KPI Cards */}
       {!loading && !error && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: 16,
-          marginBottom: 24,
-        }}>
-          <div style={{
-            backgroundColor: '#f0f4ff',
-            border: '1px solid #e0e7ff',
-            borderRadius: 8,
-            padding: '16px',
-            textAlign: 'center',
-          }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+        <div className={styles.kpiGrid}>
+          <div className={`${styles.kpiCard} ${styles.kpiIndigo}`}>
+            <div className={styles.kpiLabel}>
               Total Playtime
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#6366f1' }}>
+            <div className={styles.kpiValue}>
               {kpis.totalHours}h
             </div>
           </div>
 
-          <div style={{
-            backgroundColor: '#f5f0ff',
-            border: '1px solid #ede9fe',
-            borderRadius: 8,
-            padding: '16px',
-            textAlign: 'center',
-          }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+          <div className={`${styles.kpiCard} ${styles.kpiViolet}`}>
+            <div className={styles.kpiLabel}>
               Number of Sessions
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#8b5cf6' }}>
+            <div className={styles.kpiValue}>
               {kpis.numSessions}
             </div>
           </div>
 
-          <div style={{
-            backgroundColor: '#fdf2f8',
-            border: '1px solid #fbcfe8',
-            borderRadius: 8,
-            padding: '16px',
-            textAlign: 'center',
-          }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+          <div className={`${styles.kpiCard} ${styles.kpiPink}`}>
+            <div className={styles.kpiLabel}>
               Unique Games Played
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#ec4899' }}>
+            <div className={styles.kpiValue}>
               {kpis.uniqueGames}
             </div>
           </div>
 
-          <div style={{
-            backgroundColor: '#fffbf0',
-            border: '1px solid #fed7aa',
-            borderRadius: 8,
-            padding: '16px',
-            textAlign: 'center',
-          }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+          <div className={`${styles.kpiCard} ${styles.kpiAmber}`}>
+            <div className={styles.kpiLabel}>
               Avg Session Length
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#f59e0b' }}>
+            <div className={styles.kpiValue}>
               {Math.floor(kpis.avgSessionMinutes / 60)}h {kpis.avgSessionMinutes % 60}m
             </div>
           </div>
 
-          <div style={{
-            backgroundColor: '#f0fdf4',
-            border: '1px solid #dcfce7',
-            borderRadius: 8,
-            padding: '16px',
-            textAlign: 'center',
-          }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+          <div className={`${styles.kpiCard} ${styles.kpiGreen}`}>
+            <div className={styles.kpiLabel}>
               Days Played
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#10b981' }}>
+            <div className={styles.kpiValue}>
               {kpis.uniqueDays}/{kpis.totalDaysInPeriod} ({kpis.daysPercentage}%)
             </div>
           </div>
@@ -523,10 +456,10 @@ export default function Dashboard() {
             <div className={styles.largeChartWrapper}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthlyData} margin={{ top: 8, right: 16, left: 0, bottom: 60 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#888' }} angle={-45} textAnchor="end" interval={0} tickLine={false} axisLine={false} />
-                  <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#888' }} tickLine={false} axisLine={false} width={36} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9aa3b2' }} angle={-45} textAnchor="end" interval={0} tickLine={false} axisLine={false} />
+                  <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={36} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
                   <Bar dataKey="hours" fill="#6366f1" radius={[3, 3, 0, 0]} maxBarSize={filterYear === 'all' ? 40 : 80} />
                 </BarChart>
               </ResponsiveContainer>
@@ -539,10 +472,10 @@ export default function Dashboard() {
             <div className={styles.largeChartWrapper}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={gameData} margin={{ top: 8, right: 16, left: 0, bottom: 60 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#888' }} angle={-45} textAnchor="end" interval={0} tickLine={false} axisLine={false} />
-                  <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#888' }} tickLine={false} axisLine={false} width={36} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9aa3b2' }} angle={-45} textAnchor="end" interval={0} tickLine={false} axisLine={false} />
+                  <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={36} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
                   <Bar dataKey="hours" fill="#06b6d4" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -559,14 +492,17 @@ export default function Dashboard() {
                   data={gameData}
                   margin={{ top: 8, right: 16, left: 40, bottom: 8 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#2c3442" />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} />
                   <YAxis
                     type="category"
                     dataKey="name"
                     width={60}
+                    tick={{ fontSize: 11, fill: '#9aa3b2' }}
+                    tickLine={false}
+                    axisLine={false}
                   />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
                   <Bar dataKey="hours" fill="#06b6d4" />
                 </BarChart>
               </ResponsiveContainer>
@@ -580,11 +516,11 @@ export default function Dashboard() {
               <div className={styles.chartWrapper}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={weekdayData} margin={{ top: 8, right: 16, left: 0, bottom: 40 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#888' }} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
-                    <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#888' }} tickLine={false} axisLine={false} width={36} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
-                    <Bar dataKey="hours" fill="#8b5cf6" radius={[3, 3, 0, 0]} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
+                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9aa3b2' }} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
+                    <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={36} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                    <Bar dataKey="hours" fill="#8b7cf0" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -596,10 +532,10 @@ export default function Dashboard() {
               <div className={styles.chartWrapper}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={gameModeData} margin={{ top: 8, right: 16, left: 0, bottom: 40 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#888' }} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
-                    <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#888' }} tickLine={false} axisLine={false} width={36} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9aa3b2' }} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
+                    <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={36} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
                     <Bar dataKey="hours" fill="#ec4899" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -628,7 +564,12 @@ export default function Dashboard() {
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: any) => `${value}h`} />
+                    <Tooltip
+                      formatter={(value: any) => `${value}h`}
+                      contentStyle={{ background: '#232b38', border: '1px solid #2c3442', borderRadius: 8, color: '#eef1f6' }}
+                      itemStyle={{ color: '#eef1f6' }}
+                      labelStyle={{ color: '#eef1f6' }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -640,11 +581,11 @@ export default function Dashboard() {
               <div className={styles.chartWrapper}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={playedWithData} margin={{ top: 8, right: 16, left: 0, bottom: 40 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#888' }} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
-                    <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#888' }} tickLine={false} axisLine={false} width={36} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
-                    <Bar dataKey="hours" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9aa3b2' }} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
+                    <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={36} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                    <Bar dataKey="hours" fill="#f2a541" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -654,7 +595,7 @@ export default function Dashboard() {
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Gaming Calendar Heatmap</h2>
             <div className={styles.sectionSubtitle}>Daily playtime activity heatmap</div>
-            <div style={{ padding: '16px', backgroundColor: '#fafafa', borderRadius: 8, overflowX: 'auto' }}>
+            <div className={styles.heatmapWrapper}>
               <CalendarHeatmap
                 startDate={heatmapStartDate}
                 endDate={heatmapEndDate}
@@ -686,22 +627,25 @@ export default function Dashboard() {
             </div>
             <style>{`
               .react-calendar-heatmap .color-empty {
-                fill: #ebedf0;
+                fill: #232a36;
               }
               .react-calendar-heatmap .color-scale-1 {
-                fill: #c6e48b;
+                fill: #3a2a14;
               }
               .react-calendar-heatmap .color-scale-2 {
-                fill: #7bc96f;
+                fill: #5c4118;
               }
               .react-calendar-heatmap .color-scale-3 {
-                fill: #239a3b;
+                fill: #8a5f1d;
               }
               .react-calendar-heatmap .color-scale-4 {
-                fill: #108a30;
+                fill: #c08526;
               }
               .react-calendar-heatmap .color-scale-5 {
-                fill: #0d5a23;
+                fill: #f2a541;
+              }
+              .react-calendar-heatmap text {
+                fill: #9aa3b2;
               }
               .react-calendar-heatmap .react-calendar-heatmap-weekday-label {
                 font-size: 5px;
