@@ -286,7 +286,7 @@ export default function AddSession() {
 
       <div className={`${styles.row} ${styles.pickerRow}`} ref={pickerRef}>
         <div className={styles.label}>Game</div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
           <button
             type="button"
             className={styles.gamePickerButton}
@@ -374,7 +374,7 @@ export default function AddSession() {
       {(gameMode === 'Local Multiplayer' || gameMode === 'Online Multiplayer') && (
         <div className={styles.row}>
           <div className={styles.label}>Played With</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
             <div className={styles.playerSelect}>
               <button
                 type="button"
@@ -402,7 +402,7 @@ export default function AddSession() {
                       </label>
                     )
                   })}
-                  <div style={{ borderTop: '1px solid #e5e7eb', marginTop: 8, paddingTop: 8 }}>
+                  <div className={styles.addPlayerDivider}>
                     <button type="button" className={styles.pillAdd} onClick={() => { setAddingPlayer(true); setShowPlayerDropdown(false) }}>+ Add new player…</button>
                   </div>
                 </div>
@@ -410,7 +410,7 @@ export default function AddSession() {
             </div>
 
             {addingPlayer && (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <input className={styles.input} placeholder="Name" value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} />
                 <button className={styles.smallBtn} onClick={handleAddPlayer}>Add</button>
                 <button className={styles.smallBtn} onClick={() => { setAddingPlayer(false); setNewPlayerName('') }}>Cancel</button>

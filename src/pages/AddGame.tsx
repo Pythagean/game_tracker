@@ -302,8 +302,8 @@ export default function AddGame() {
 
       {/* Platform selector: shown once a game is selected */}
       {selected && (
-        <div style={{ marginTop: '1rem' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Platform</label>
+        <div className={styles.platformSection}>
+          <label className={styles.fieldLabel}>Platform</label>
           {!addingPlatform && (
             <select
               value={selectedPlatformId ?? ''}
@@ -316,7 +316,7 @@ export default function AddGame() {
                   setSelectedPlatformId(v ? Number(v) : null)
                 }
               }}
-              style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc', minWidth: 220 }}
+              className={`${styles.input} ${styles.platformSelect}`}
             >
               <option value="">Select platform...</option>
               {platforms.map((p) => (
@@ -327,22 +327,22 @@ export default function AddGame() {
           )}
 
           {addingPlatform && (
-            <div style={{ marginTop: 8, display: 'grid', gap: 8, maxWidth: 420 }}>
+            <div className={styles.addPlatformForm}>
               <input
                 placeholder="Platform name (e.g. PS4, Switch)"
                 value={newPlatformName}
                 onChange={(e) => setNewPlatformName(e.target.value)}
-                style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc' }}
+                className={styles.input}
               />
               <input
                 placeholder="Manufacturer (optional, e.g. Sony)"
                 value={newPlatformManufacturer}
                 onChange={(e) => setNewPlatformManufacturer(e.target.value)}
-                style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc' }}
+                className={styles.input}
               />
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button onClick={handleAddPlatform} className={styles.saveButton}>Save platform</button>
-                <button onClick={() => setAddingPlatform(false)} className={styles.saveButton} style={{ background: '#e5e7eb', color: '#111' }}>Cancel</button>
+                <button onClick={() => setAddingPlatform(false)} className={styles.secondaryButton}>Cancel</button>
               </div>
             </div>
           )}
