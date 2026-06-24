@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+// import { useNavigate } from 'react-router-dom'
 import { supabase, FIXED_USER_ID } from '@/lib/supabase'
 import styles from './AddSession.module.css'
 
@@ -128,7 +128,7 @@ export default function AddSession() {
   const gameListRef = useRef<HTMLDivElement | null>(null)
   const gameSearchRef = useRef<HTMLInputElement | null>(null)
   const hiddenDateRef = useRef<HTMLInputElement | null>(null)
-  const navigate = useNavigate()
+  // const navigate = useNavigate()
   useEffect(() => {
     function onDoc(e: MouseEvent) {
       if (!pickerRef.current) return
