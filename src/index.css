@@ -1,0 +1,10 @@
+html, body, #root {
+  min-height: 100%;
+  margin: 0;
+  background: #11151c;
+  color: #eef1f6;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
