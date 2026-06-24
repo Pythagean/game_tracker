@@ -348,7 +348,7 @@ export default function AddSession() {
             </div>
           )}
           {/* Add Game quick link */}
-          <button type="button" className={styles.addGameBtn} onClick={() => navigate('/add-game')}>Add a New Game</button>
+          {/* <button type="button" className={styles.addGameBtn} onClick={() => navigate('/add-game')}>Add a New Game</button> */}
         </div>
       </div>
 
