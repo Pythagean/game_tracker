@@ -4,6 +4,7 @@ import AddSession from '@/pages/AddSession'
 import Stats from '@/pages/Stats'
 import Auth from '@/pages/Auth'
 import Dashboard from '@/pages/Dashboard'
+import Games from '@/pages/Games'
 import appStyles from './App.module.css'
 
 export default function App() {
@@ -22,6 +23,10 @@ export default function App() {
             <span style={{ fontSize: 14 }}>🎮</span>
             <span className={appStyles.onlyIconMobile}>Add Game</span>
           </NavLink>
+          <NavLink to="/games" className={navLinkClass}>
+            <span style={{ fontSize: 14 }}>📚</span>
+            <span className={appStyles.onlyIconMobile}>Games</span>
+          </NavLink>
           <NavLink to="/stats" className={navLinkClass}>
             <span style={{ fontSize: 14 }}>📊</span>
             <span className={appStyles.onlyIconMobile}>Stats</span>
@@ -31,18 +36,17 @@ export default function App() {
             <span className={appStyles.onlyIconMobile}>Dashboard</span>
           </NavLink>
         </div>
-
+        
       </nav>
-      <main className={appStyles.content}>
-        <Routes>
-          <Route path="/add-session" element={<AddSession />} />
-          <Route path="/add-game" element={<AddGame />} />
-          <Route path="/stats" element={<Stats />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/" element={<AddSession />} />
-        </Routes>
-      </main>
+      <Routes>
+        <Route path="/add-session" element={<AddSession />} />
+        <Route path="/add-game" element={<AddGame />} />
+        <Route path="/games" element={<Games />} />
+        <Route path="/stats" element={<Stats />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/" element={<AddSession />} />
+      </Routes>
     </HashRouter>
   )
 }
