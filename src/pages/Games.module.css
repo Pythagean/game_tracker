@@ -219,3 +219,169 @@
   .filterGroup { flex: 1 1 calc(50% - 6px); min-width: 130px; }
   .gameGrid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 14px; }
 }
+
+/* ---------- Detail modal ---------- */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.modalPanel {
+  background: var(--c-panel);
+  border: 1px solid var(--c-border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card), 0 30px 60px -20px rgba(0, 0, 0, 0.7);
+  width: 100%;
+  max-width: 640px;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 24px 28px;
+  position: relative;
+  animation: modalIn 180ms ease;
+}
+
+.modalClose {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--c-panel-raised);
+  border: 1px solid var(--c-border);
+  color: var(--c-text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.modalClose:hover { background: var(--c-border); color: var(--c-text); }
+.modalClose:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+
+.modalHeader {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding-right: 36px;
+}
+
+.modalCoverWrap {
+  width: 110px;
+  flex-shrink: 0;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--c-border), 0 14px 28px -12px rgba(0, 0, 0, 0.7);
+}
+.modalCover { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.modalTitle {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.4rem;
+  margin: 0 0 8px;
+  color: var(--c-text);
+}
+
+.modalTags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.tag {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--c-secondary-soft);
+  color: var(--c-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.statTileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.statTile {
+  background: var(--c-panel-raised);
+  border: 1px solid var(--c-border-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  text-align: center;
+}
+.statTileLabel {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-text-faint);
+  margin-bottom: 4px;
+}
+.statTileValue { font-family: var(--font-mono); font-size: 1.05rem; font-weight: 600; color: var(--c-text); }
+
+.modalSection { margin-bottom: 20px; }
+.modalSectionTitle {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--c-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+
+.modalChartWrapper { height: 180px; }
+
+.breakdownList { display: flex; flex-direction: column; gap: 10px; }
+.breakdownRow { display: flex; flex-direction: column; gap: 4px; }
+.breakdownLabelRow { display: flex; justify-content: space-between; font-size: 0.85rem; }
+.breakdownLabel { color: var(--c-text); font-weight: 500; }
+.breakdownValue { color: var(--c-text-dim); font-family: var(--font-mono); font-size: 0.8rem; }
+.breakdownBarTrack { width: 100%; height: 6px; background: var(--c-border-soft); border-radius: 999px; overflow: hidden; }
+.breakdownBarFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--c-secondary), var(--c-accent));
+  border-radius: 999px;
+  transition: width 300ms ease;
+}
+
+.metaDetails {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.45rem 1rem;
+  font-size: 0.85rem;
+}
+.metaDetails dt {
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--c-text-faint);
+  padding-top: 2px;
+}
+.metaDetails dd { margin: 0; color: var(--c-text); }
+
+@media (max-width: 480px) {
+  .modalPanel { padding: 20px 16px; max-height: 92vh; }
+  .modalCoverWrap { width: 84px; }
+  .modalHeader { padding-right: 30px; }
+  .statTileGrid { grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); }
+}
