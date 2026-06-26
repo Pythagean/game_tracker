@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { supabase, FIXED_USER_ID } from '@/lib/supabase'
 import {
   BarChart,
@@ -51,6 +51,204 @@ const MONTH_ORDER = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December']
 const COLORS = ['#6366f1', '#8b7cf0', '#ec4899', '#f2a541', '#10b981', '#06b6d4', '#3b82f6', '#ef4444']
 
+// Same amber ramp used by the GitHub-style heatmap above, so the two calendar
+// visualizations on this page read as one consistent "intensity" language.
+// Index 0 = no playtime that day, 1-5 = increasing intensity.
+const HEATMAP_COLORS = ['#232a36', '#3a2a14', '#5c4118', '#8a5f1d', '#c08526', '#f2a541']
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const WEEKDAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+
+function intensityForMinutes(minutes: number) {
+  const hours = minutes / 60
+  if (hours <= 0) return 0
+  if (hours < 1) return 1
+  if (hours < 2) return 2
+  if (hours < 3) return 3
+  if (hours < 4) return 4
+  return 5
+}
+
+function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + w - r, y)
+  ctx.arcTo(x + w, y, x + w, y + r, r)
+  ctx.lineTo(x + w, y + h - r)
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r)
+  ctx.lineTo(x + r, y + h)
+  ctx.arcTo(x, y + h, x, y + h - r, r)
+  ctx.lineTo(x, y + r)
+  ctx.arcTo(x, y, x + r, y, r)
+  ctx.closePath()
+}
+
+interface CalendarCell { x: number; y: number; w: number; h: number; date: string; minutes: number }
+
+/**
+ * A literal year-at-a-glance calendar (12 real month grids, with weekday
+ * columns and day numbers) drawn on a <canvas>, colored by daily playtime.
+ * This is deliberately distinct from the GitHub-style contribution heatmap
+ * above it: that one is an abstract week-column strip, this one looks like
+ * an actual wall calendar.
+ */
+function PlaytimeCalendar({ year, dayMinutes }: { year: number; dayMinutes: Map<string, number> }) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const cellsRef = useRef<CalendarCell[]>([])
+  const [containerWidth, setContainerWidth] = useState(0)
+  const [hover, setHover] = useState<{ x: number; y: number; label: string } | null>(null)
+
+  // Track the wrapper's width so the grid can reflow into more/fewer columns
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
+    setContainerWidth(el.getBoundingClientRect().width)
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) setContainerWidth(entry.contentRect.width)
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // Draw (and redraw on resize / year change / data change)
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || containerWidth <= 0) return
+
+    const columns = containerWidth >= 1100 ? 4 : containerWidth >= 820 ? 3 : 2
+    const gapX = 28
+    const gapY = 26
+    const monthBlockWidth = Math.floor((containerWidth - gapX * (columns - 1)) / columns)
+    const cellGap = 2
+    const cell = Math.max(10, Math.min(20, Math.floor((monthBlockWidth - 6 * cellGap) / 7) - 2))
+    const labelHeight = 18
+    const headerHeight = 14
+    const monthRows = 6 // always reserve 6 weeks so every month grid lines up
+    const monthBlockHeight = labelHeight + headerHeight + monthRows * cell + (monthRows - 1) * cellGap
+
+    const rowsCount = Math.ceil(12 / columns)
+    const totalWidth = columns * monthBlockWidth + (columns - 1) * gapX
+    const totalHeight = rowsCount * monthBlockHeight + (rowsCount - 1) * gapY
+
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = Math.round(totalWidth * dpr)
+    canvas.height = Math.round(totalHeight * dpr)
+    canvas.style.width = `${totalWidth}px`
+    canvas.style.height = `${totalHeight}px`
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, totalWidth, totalHeight)
+
+    const today = new Date()
+    const isCurrentYear = today.getFullYear() === year
+    const cells: CalendarCell[] = []
+
+    for (let m = 0; m < 12; m++) {
+      const col = m % columns
+      const row = Math.floor(m / columns)
+      const gx = col * (monthBlockWidth + gapX)
+      const gy = row * (monthBlockHeight + gapY)
+
+      // Month label
+      ctx.font = '600 11px system-ui, -apple-system, sans-serif'
+      ctx.fillStyle = '#eef1f6' // --c-text
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'top'
+      ctx.fillText(MONTH_ABBR[m], gx, gy)
+
+      // Weekday header letters (Monday-first, matching the rest of the dashboard)
+      ctx.font = '500 9px system-ui, -apple-system, sans-serif'
+      ctx.fillStyle = '#5d6675' // --c-text-faint
+      ctx.textAlign = 'center'
+      for (let wd = 0; wd < 7; wd++) {
+        const x = gx + wd * (cell + cellGap) + cell / 2
+        ctx.fillText(WEEKDAY_LETTERS[wd], x, gy + labelHeight)
+      }
+
+      const daysInMonth = new Date(year, m + 1, 0).getDate()
+      const startCol = (new Date(year, m, 1).getDay() + 6) % 7 // 0=Mon..6=Sun
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const idx = startCol + day - 1
+        const dCol = idx % 7
+        const dRow = Math.floor(idx / 7)
+        const cx = gx + dCol * (cell + cellGap)
+        const cy = gy + labelHeight + headerHeight + dRow * (cell + cellGap)
+
+        const dateStr = `${year}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+        const minutes = dayMinutes.get(dateStr) ?? 0
+        const level = intensityForMinutes(minutes)
+
+        ctx.fillStyle = HEATMAP_COLORS[level]
+        roundedRectPath(ctx, cx, cy, cell, cell, 2)
+        ctx.fill()
+
+        if (isCurrentYear && m === today.getMonth() && day === today.getDate()) {
+          ctx.strokeStyle = '#ffc46b' // --c-accent-strong
+          ctx.lineWidth = 1.5
+          roundedRectPath(ctx, cx + 0.75, cy + 0.75, cell - 1.5, cell - 1.5, 2)
+          ctx.stroke()
+        }
+
+        ctx.font = `${Math.max(7, Math.floor(cell * 0.55))}px system-ui, -apple-system, sans-serif`
+        ctx.fillStyle = level >= 4 ? '#1a1206' : '#7d8696' // dark text on bright cells, muted otherwise
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(String(day), cx + cell / 2, cy + cell / 2 + 0.5)
+
+        cells.push({ x: cx, y: cy, w: cell, h: cell, date: dateStr, minutes })
+      }
+    }
+
+    cellsRef.current = cells
+  }, [containerWidth, year, dayMinutes])
+
+  function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current
+    const wrapper = wrapperRef.current
+    if (!canvas || !wrapper) return
+    const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const hit = cellsRef.current.find((c) => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h)
+    if (!hit) { setHover(null); return }
+
+    const wrapperRect = wrapper.getBoundingClientRect()
+    const dateLabel = new Date(`${hit.date}T00:00:00`).toLocaleDateString('en-AU', {
+      weekday: 'short', month: 'short', day: 'numeric',
+    })
+    const h = Math.floor(hit.minutes / 60)
+    const m = hit.minutes % 60
+    const durationLabel = hit.minutes > 0 ? (h > 0 ? `${h}h ${m}m` : `${m}m`) : 'No sessions'
+
+    setHover({
+      x: e.clientX - wrapperRect.left,
+      y: e.clientY - wrapperRect.top,
+      label: `${dateLabel} · ${durationLabel}`,
+    })
+  }
+
+  return (
+    <div className={styles.calendarWrapper} ref={wrapperRef}>
+      <canvas
+        ref={canvasRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHover(null)}
+      />
+      {hover && (
+        <div
+          className={`${styles.tooltip} ${styles.canvasTooltip}`}
+          style={{ left: hover.x, top: hover.y }}
+        >
+          {hover.label}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [rawSessions, setRawSessions] = useState<RawSession[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,6 +259,16 @@ export default function Dashboard() {
   const [filterWeekday, setFilterWeekday] = useState('all')
   const [filterPlatform, setFilterPlatform] = useState('all')
   const [filterPlayedWith, setFilterPlayedWith] = useState('all')
+
+  const [calendarYear, setCalendarYear] = useState<number>(
+    filterYear !== 'all' ? filterYear : new Date().getFullYear()
+  )
+
+  // Keep the calendar's year in step with the page's year filter when one is set;
+  // when the filter is "All", the calendar keeps its own independent prev/next navigation.
+  useEffect(() => {
+    if (filterYear !== 'all') setCalendarYear(filterYear)
+  }, [filterYear])
 
   useEffect(() => {
     let mounted = true
@@ -252,6 +460,19 @@ export default function Dashboard() {
       date,
       count: Math.round(parseFloat(formatHours(minutes)) * 10) // Scale up for heatmap intensity
     }))
+  }, [filteredSessions])
+
+  // Plain date -> minutes lookup for the canvas year-calendar below (same
+  // filtered sessions as the heatmap above, just without the 10x scaling
+  // that react-calendar-heatmap's bucketing wanted).
+  const dayMinutesMap = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const s of filteredSessions) {
+      if (!s.start_date) continue
+      const dateStr = s.start_date.split('T')[0]
+      map.set(dateStr, (map.get(dateStr) ?? 0) + s.duration_minutes)
+    }
+    return map
   }, [filteredSessions])
 
   const heatmapStartDate = useMemo(() => {
@@ -651,6 +872,39 @@ export default function Dashboard() {
                 font-size: 5px;
               }
             `}</style>
+          </section>
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Yearly Calendar</h2>
+            <div className={styles.sectionSubtitle}>A full year at a glance — darker days mean more playtime</div>
+
+            <div className={styles.calendarNav}>
+              <button
+                className={styles.calendarYearBtn}
+                onClick={() => setCalendarYear((y) => y - 1)}
+                aria-label="Previous year"
+              >
+                ‹
+              </button>
+              <span className={styles.calendarYearLabel}>{calendarYear}</span>
+              <button
+                className={styles.calendarYearBtn}
+                onClick={() => setCalendarYear((y) => y + 1)}
+                aria-label="Next year"
+              >
+                ›
+              </button>
+            </div>
+
+            <PlaytimeCalendar year={calendarYear} dayMinutes={dayMinutesMap} />
+
+            <div className={styles.calendarLegend}>
+              <span>Less</span>
+              {HEATMAP_COLORS.map((c, i) => (
+                <span key={i} className={styles.legendSwatch} style={{ background: c }} />
+              ))}
+              <span>More</span>
+            </div>
           </section>
         </>
       )}

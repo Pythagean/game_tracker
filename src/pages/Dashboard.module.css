@@ -244,6 +244,66 @@
   overflow-x: auto;
 }
 
+/* ---------- Canvas year calendar ---------- */
+
+.calendarNav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.calendarYearBtn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-border);
+  background: var(--c-panel-raised);
+  color: var(--c-text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.calendarYearBtn:hover { background: var(--c-border); border-color: var(--c-accent); color: var(--c-text); }
+.calendarYearBtn:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+
+.calendarYearLabel {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 1rem;
+  min-width: 48px;
+  text-align: center;
+  color: var(--c-text);
+}
+
+.calendarWrapper {
+  position: relative;
+  width: 100%;
+  overflow-x: auto;
+}
+.calendarWrapper canvas { display: block; }
+
+.canvasTooltip {
+  position: absolute;
+  pointer-events: none;
+  transform: translate(-50%, -120%);
+  white-space: nowrap;
+  z-index: 5;
+}
+
+.calendarLegend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 0.75rem;
+  color: var(--c-text-faint);
+}
+.legendSwatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
 /* ============================================================
    Responsive
    ============================================================ */
