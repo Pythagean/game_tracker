@@ -312,6 +312,7 @@ export default function Games() {
         platforms: [] as { label: string; minutes: number }[],
         players: [] as { label: string; minutes: number }[],
         modes: [] as { label: string; minutes: number }[],
+        weekday: [] as { label: string; minutes: number; hours: number }[],
         monthly: [] as { label: string; minutes: number; hours: number }[],
       }
     }
@@ -327,6 +328,7 @@ export default function Games() {
     const platformMap = new Map<string, number>()
     const playerMap = new Map<string, number>()
     const modeMap = new Map<string, number>()
+    const weekdayMap = new Map<string, number>()
     const monthMap = new Map<string, number>()
     const monthOrder: string[] = []
 
@@ -336,6 +338,9 @@ export default function Games() {
       if (s.game_mode) modeMap.set(s.game_mode, (modeMap.get(s.game_mode) ?? 0) + s.duration_minutes)
 
       const d = new Date(s.start_date)
+      const weekday = d.toLocaleString('default', { weekday: 'long' })
+      weekdayMap.set(weekday, (weekdayMap.get(weekday) ?? 0) + s.duration_minutes)
+
       const key = d.toLocaleString('default', { month: 'short', year: '2-digit' })
       if (!monthMap.has(key)) monthOrder.push(key)
       monthMap.set(key, (monthMap.get(key) ?? 0) + s.duration_minutes)
@@ -362,6 +367,11 @@ export default function Games() {
       platforms: toSortedList(platformMap),
       players: toSortedList(playerMap),
       modes: toSortedList(modeMap),
+      weekday: WEEKDAY_ORDER.map((day) => ({
+        label: day.slice(0, 3),
+        minutes: weekdayMap.get(day) ?? 0,
+        hours: +((weekdayMap.get(day) ?? 0) / 60).toFixed(1),
+      })),
       monthly: monthOrder.map((label) => ({
         label,
         minutes: monthMap.get(label) ?? 0,
@@ -585,6 +595,29 @@ export default function Games() {
                             labelStyle={{ color: '#9aa3b2' }}
                           />
                           <Bar dataKey="hours" fill="#f2a541" radius={[3, 3, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+
+                {gameDetail.weekday.length > 0 && (
+                  <div className={styles.modalSection}>
+                    <div className={styles.modalSectionTitle}>Playtime by Weekday</div>
+                    <div className={styles.modalChartWrapper}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={gameDetail.weekday}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
+                          <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9aa3b2' }} tickLine={false} axisLine={false} />
+                          <YAxis tick={{ fontSize: 10, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={32} />
+                          <Tooltip
+                            formatter={(value: any) => `${value}h`}
+                            cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                            contentStyle={{ background: '#232b38', border: '1px solid #2c3442', borderRadius: 8 }}
+                            itemStyle={{ color: '#eef1f6' }}
+                            labelStyle={{ color: '#9aa3b2' }}
+                          />
+                          <Bar dataKey="hours" fill="#8b7cf0" radius={[3, 3, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
