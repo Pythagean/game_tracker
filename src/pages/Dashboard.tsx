@@ -260,15 +260,12 @@ export default function Dashboard() {
   const [filterPlatform, setFilterPlatform] = useState('all')
   const [filterPlayedWith, setFilterPlayedWith] = useState('all')
 
-  const [calendarYear, setCalendarYear] = useState<number>(
-    filterYear !== 'all' ? filterYear : new Date().getFullYear()
-  )
-
-  // Keep the calendar's year in step with the page's year filter when one is set;
-  // when the filter is "All", the calendar keeps its own independent prev/next navigation.
-  useEffect(() => {
-    if (filterYear !== 'all') setCalendarYear(filterYear)
-  }, [filterYear])
+  // The calendar always needs a concrete year to render, even though the page filter
+  // can be "All". Deriving it (rather than holding separate state) is what keeps the
+  // calendar's year control and the Year filter dropdown perfectly in sync both ways:
+  // moving the calendar calls setFilterYear directly, and picking a year in the filter
+  // flows straight through here.
+  const calendarYear = filterYear !== 'all' ? filterYear : new Date().getFullYear()
 
   useEffect(() => {
     let mounted = true
@@ -813,7 +810,7 @@ export default function Dashboard() {
             </section>
           </div>
 
-          <section className={styles.section}>
+          {/* <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Gaming Calendar Heatmap</h2>
             <div className={styles.sectionSubtitle}>Daily playtime activity heatmap</div>
             <div className={styles.heatmapWrapper}>
@@ -872,7 +869,7 @@ export default function Dashboard() {
                 font-size: 5px;
               }
             `}</style>
-          </section>
+          </section> */}
 
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Yearly Calendar</h2>
@@ -881,7 +878,7 @@ export default function Dashboard() {
             <div className={styles.calendarNav}>
               <button
                 className={styles.calendarYearBtn}
-                onClick={() => setCalendarYear((y) => y - 1)}
+                onClick={() => setFilterYear(calendarYear - 1)}
                 aria-label="Previous year"
               >
                 ‹
@@ -889,7 +886,7 @@ export default function Dashboard() {
               <span className={styles.calendarYearLabel}>{calendarYear}</span>
               <button
                 className={styles.calendarYearBtn}
-                onClick={() => setCalendarYear((y) => y + 1)}
+                onClick={() => setFilterYear(calendarYear + 1)}
                 aria-label="Next year"
               >
                 ›
