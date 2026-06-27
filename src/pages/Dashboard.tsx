@@ -12,7 +12,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import CalendarHeatmap from 'react-calendar-heatmap'
+// import CalendarHeatmap from 'react-calendar-heatmap'
 import "react-calendar-heatmap/dist/styles.css";
 import styles from './Dashboard.module.css'
 
@@ -446,18 +446,18 @@ export default function Dashboard() {
       .map(([name, minutes]) => ({ name, hours: parseFloat(formatHours(minutes)), minutes }))
   }, [filteredSessions])
 
-  const heatmapData = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const s of filteredSessions) {
-      if (!s.start_date) continue
-      const dateStr = s.start_date.split('T')[0] // Format as YYYY-MM-DD
-      map.set(dateStr, (map.get(dateStr) ?? 0) + s.duration_minutes)
-    }
-    return Array.from(map.entries()).map(([date, minutes]) => ({
-      date,
-      count: Math.round(parseFloat(formatHours(minutes)) * 10) // Scale up for heatmap intensity
-    }))
-  }, [filteredSessions])
+  // const heatmapData = useMemo(() => {
+  //   const map = new Map<string, number>()
+  //   for (const s of filteredSessions) {
+  //     if (!s.start_date) continue
+  //     const dateStr = s.start_date.split('T')[0] // Format as YYYY-MM-DD
+  //     map.set(dateStr, (map.get(dateStr) ?? 0) + s.duration_minutes)
+  //   }
+  //   return Array.from(map.entries()).map(([date, minutes]) => ({
+  //     date,
+  //     count: Math.round(parseFloat(formatHours(minutes)) * 10) // Scale up for heatmap intensity
+  //   }))
+  // }, [filteredSessions])
 
   // Plain date -> minutes lookup for the canvas year-calendar below (same
   // filtered sessions as the heatmap above, just without the 10x scaling
@@ -472,32 +472,32 @@ export default function Dashboard() {
     return map
   }, [filteredSessions])
 
-  const heatmapStartDate = useMemo(() => {
-    if (filterYear === 'all') {
-      // Find earliest year in data
-      let minYear = new Date().getFullYear()
-      for (const s of rawSessions) {
-        if (s.start_date) {
-          const year = new Date(s.start_date).getFullYear()
-          if (year < minYear) minYear = year
-        }
-      }
-      return new Date(minYear, 0, 1)
-    }
-    return new Date(filterYear as number, 0, 1)
-  }, [filterYear, rawSessions])
+  // const heatmapStartDate = useMemo(() => {
+  //   if (filterYear === 'all') {
+  //     // Find earliest year in data
+  //     let minYear = new Date().getFullYear()
+  //     for (const s of rawSessions) {
+  //       if (s.start_date) {
+  //         const year = new Date(s.start_date).getFullYear()
+  //         if (year < minYear) minYear = year
+  //       }
+  //     }
+  //     return new Date(minYear, 0, 1)
+  //   }
+  //   return new Date(filterYear as number, 0, 1)
+  // }, [filterYear, rawSessions])
 
-  const heatmapEndDate = useMemo(() => {
-    if (filterYear === 'all') {
-      return new Date()
-    }
-    const year = filterYear as number
-    const currentYear = new Date().getFullYear()
-    if (year === currentYear) {
-      return new Date()
-    }
-    return new Date(year, 11, 31)
-  }, [filterYear])
+  // const heatmapEndDate = useMemo(() => {
+  //   if (filterYear === 'all') {
+  //     return new Date()
+  //   }
+  //   const year = filterYear as number
+  //   const currentYear = new Date().getFullYear()
+  //   if (year === currentYear) {
+  //     return new Date()
+  //   }
+  //   return new Date(year, 11, 31)
+  // }, [filterYear])
 
   const kpis = useMemo(() => {
     const totalMinutes = filteredSessions.reduce((sum, s) => sum + s.duration_minutes, 0)
