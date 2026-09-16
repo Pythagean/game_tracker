@@ -1,7 +1,7 @@
 import { HashRouter, Routes, Route, NavLink } from 'react-router-dom'
 import AddGame from '@/pages/AddGame'
 import AddSession from '@/pages/AddSession'
-import Stats from '@/pages/Stats'
+import Log from '@/pages/Log'
 import Auth from '@/pages/Auth'
 import Dashboard from '@/pages/Dashboard'
 import Games from '@/pages/Games'
@@ -27,9 +27,9 @@ export default function App() {
             <span style={{ fontSize: 14 }}>📚</span>
             <span className={appStyles.onlyIconMobile}>Games</span>
           </NavLink>
-          <NavLink to="/stats" className={navLinkClass}>
+          <NavLink to="/log" className={navLinkClass}>
             <span style={{ fontSize: 14 }}>📊</span>
-            <span className={appStyles.onlyIconMobile}>Stats</span>
+            <span className={appStyles.onlyIconMobile}>Log</span>
           </NavLink>
           <NavLink to="/dashboard" className={navLinkClass}>
             <span style={{ fontSize: 14 }}>📈</span>
@@ -42,7 +42,7 @@ export default function App() {
         <Route path="/add-session" element={<AddSession />} />
         <Route path="/add-game" element={<AddGame />} />
         <Route path="/games" element={<Games />} />
-        <Route path="/stats" element={<Stats />} />
+        <Route path="/log" element={<Log />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/" element={<AddSession />} />
