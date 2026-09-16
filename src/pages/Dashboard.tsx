@@ -596,6 +596,7 @@ export default function Dashboard() {
     const daysPercentage = totalDaysInPeriod > 0 ? Math.round((uniqueDays / totalDaysInPeriod) * 100) : 0
 
     return {
+      totalMinutes,
       totalHours: formatHours(totalMinutes),
       numSessions,
       uniqueGames,
@@ -605,6 +606,36 @@ export default function Dashboard() {
       daysPercentage,
     }
   }, [filteredSessions, filterYear, rawSessions])
+
+  // Per-year averages across the whole dataset (2018 excluded as unreliable), shown
+  // alongside each KPI so the selected year's numbers have a baseline to compare against.
+  const datasetAverages = useMemo(() => {
+    const yearMap = new Map<number, { totalMinutes: number; numSessions: number; games: Set<string>; uniqueDays: Set<string> }>()
+    for (const s of rawSessions) {
+      if (!s.start_date) continue
+      const year = new Date(s.start_date).getFullYear()
+      if (year === 2018) continue
+      if (!yearMap.has(year)) yearMap.set(year, { totalMinutes: 0, numSessions: 0, games: new Set(), uniqueDays: new Set() })
+      const y = yearMap.get(year)!
+      y.totalMinutes += s.duration_minutes
+      y.numSessions += 1
+      if (s.game) y.games.add(s.game)
+      y.uniqueDays.add(new Date(s.start_date).toDateString())
+    }
+
+    const years = Array.from(yearMap.values())
+    const numYears = years.length
+    const nonExcludedSessions = rawSessions.filter((s) => s.start_date && new Date(s.start_date).getFullYear() !== 2018)
+    const totalMinutesAll = nonExcludedSessions.reduce((sum, s) => sum + s.duration_minutes, 0)
+
+    return {
+      avgTotalMinutesPerYear: numYears > 0 ? years.reduce((sum, y) => sum + y.totalMinutes, 0) / numYears : 0,
+      avgSessionsPerYear: numYears > 0 ? years.reduce((sum, y) => sum + y.numSessions, 0) / numYears : 0,
+      avgUniqueGamesPerYear: numYears > 0 ? years.reduce((sum, y) => sum + y.games.size, 0) / numYears : 0,
+      avgSessionMinutes: nonExcludedSessions.length > 0 ? totalMinutesAll / nonExcludedSessions.length : 0,
+      avgUniqueDaysPerYear: numYears > 0 ? years.reduce((sum, y) => sum + y.uniqueDays.size, 0) / numYears : 0,
+    }
+  }, [rawSessions])
 
   const activeFilterCount = [
     filterYear !== 'all', filterMonth !== 'all', filterWeekday !== 'all',
@@ -669,8 +700,13 @@ export default function Dashboard() {
               Total Playtime
             </div>
             <div className={styles.kpiValue}>
-              {kpis.totalHours}h
+              {Math.round(kpis.totalMinutes / 60)}h
             </div>
+            {filterYear !== 'all' && (
+              <div className={styles.kpiSubValue}>
+                (avg {Math.round(datasetAverages.avgTotalMinutesPerYear / 60)}h/yr)
+              </div>
+            )}
           </div>
 
           <div className={`${styles.kpiCard} ${styles.kpiViolet}`}>
@@ -680,6 +716,11 @@ export default function Dashboard() {
             <div className={styles.kpiValue}>
               {kpis.numSessions}
             </div>
+            {filterYear !== 'all' && (
+              <div className={styles.kpiSubValue}>
+                (avg {Math.round(datasetAverages.avgSessionsPerYear)}/yr)
+              </div>
+            )}
           </div>
 
           <div className={`${styles.kpiCard} ${styles.kpiPink}`}>
@@ -689,6 +730,11 @@ export default function Dashboard() {
             <div className={styles.kpiValue}>
               {kpis.uniqueGames}
             </div>
+            {filterYear !== 'all' && (
+              <div className={styles.kpiSubValue}>
+                (avg {Math.round(datasetAverages.avgUniqueGamesPerYear)}/yr)
+              </div>
+            )}
           </div>
 
           <div className={`${styles.kpiCard} ${styles.kpiAmber}`}>
@@ -698,6 +744,11 @@ export default function Dashboard() {
             <div className={styles.kpiValue}>
               {Math.floor(kpis.avgSessionMinutes / 60)}h {kpis.avgSessionMinutes % 60}m
             </div>
+            {filterYear !== 'all' && (
+              <div className={styles.kpiSubValue}>
+                (avg {Math.floor(datasetAverages.avgSessionMinutes / 60)}h {Math.round(datasetAverages.avgSessionMinutes % 60)}m overall)
+              </div>
+            )}
           </div>
 
           <div className={`${styles.kpiCard} ${styles.kpiGreen}`}>
@@ -707,6 +758,11 @@ export default function Dashboard() {
             <div className={styles.kpiValue}>
               {kpis.uniqueDays}/{kpis.totalDaysInPeriod} ({kpis.daysPercentage}%)
             </div>
+            {filterYear !== 'all' && (
+              <div className={styles.kpiSubValue}>
+                (avg {Math.round(datasetAverages.avgUniqueDaysPerYear)} days/yr)
+              </div>
+            )}
           </div>
         </div>
       )}

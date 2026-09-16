@@ -219,6 +219,14 @@
 
 .kpiValue { font-size: 1.75rem; font-weight: 700; font-family: var(--font-mono); }
 
+.kpiSubValue {
+  font-size: 0.7rem;
+  font-weight: 500;
+  font-family: var(--font-mono);
+  color: var(--c-text-faint);
+  margin-top: 4px;
+}
+
 .kpiIndigo { background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.3); }
 .kpiIndigo .kpiValue { color: #818cf8; }
 
