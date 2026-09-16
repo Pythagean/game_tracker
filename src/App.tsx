@@ -23,14 +23,15 @@ export default function App() {
             <span style={{ fontSize: 14 }}>🎮</span>
             <span className={appStyles.onlyIconMobile}>Add Game</span>
           </NavLink>
+          <NavLink to="/log" className={navLinkClass}>
+            <span style={{ fontSize: 14 }}>📋</span>
+            <span className={appStyles.onlyIconMobile}>Log</span>
+          </NavLink>
           <NavLink to="/games" className={navLinkClass}>
             <span style={{ fontSize: 14 }}>📚</span>
             <span className={appStyles.onlyIconMobile}>Games</span>
           </NavLink>
-          <NavLink to="/log" className={navLinkClass}>
-            <span style={{ fontSize: 14 }}>📊</span>
-            <span className={appStyles.onlyIconMobile}>Log</span>
-          </NavLink>
+          
           <NavLink to="/dashboard" className={navLinkClass}>
             <span style={{ fontSize: 14 }}>📈</span>
             <span className={appStyles.onlyIconMobile}>Dashboard</span>

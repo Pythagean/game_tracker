@@ -3,6 +3,8 @@ import { supabase, FIXED_USER_ID } from '@/lib/supabase'
 import {
   BarChart,
   Bar,
+  LineChart,
+  Line,
   PieChart,
   Pie,
   Cell,
@@ -10,6 +12,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from 'recharts'
 // import CalendarHeatmap from 'react-calendar-heatmap'
@@ -260,6 +263,9 @@ export default function Dashboard() {
   const [filterPlatform, setFilterPlatform] = useState('all')
   const [filterPlayedWith, setFilterPlayedWith] = useState('all')
 
+  // Which year's line is highlighted (dimming the rest) in the cumulative playtime chart.
+  const [highlightedYear, setHighlightedYear] = useState<number | null>(null)
+
   // The calendar always needs a concrete year to render, even though the page filter
   // can be "All". Deriving it (rather than holding separate state) is what keeps the
   // calendar's year control and the Year filter dropdown perfectly in sync both ways:
@@ -471,6 +477,48 @@ export default function Dashboard() {
     }
     return map
   }, [filteredSessions])
+
+  // Cumulative playtime per year, keyed by day-of-year, so each year renders as its
+  // own line and years can be visually compared regardless of the active Year filter.
+  const cumulativeYearlyData = useMemo(() => {
+    const yearDayMinutes = new Map<number, Map<number, number>>()
+    for (const s of rawSessions) {
+      if (!s.start_date) continue
+      const d = new Date(s.start_date)
+      const year = d.getFullYear()
+      const dayOfYear = Math.floor((Date.UTC(year, d.getMonth(), d.getDate()) - Date.UTC(year, 0, 1)) / 86400000) + 1
+      if (!yearDayMinutes.has(year)) yearDayMinutes.set(year, new Map())
+      const dm = yearDayMinutes.get(year)!
+      dm.set(dayOfYear, (dm.get(dayOfYear) ?? 0) + s.duration_minutes)
+    }
+
+    // 2018 data is unreliable (pre-dates consistent tracking), so it's always excluded here.
+    const years = Array.from(yearDayMinutes.keys()).filter((y) => y !== 2018).sort((a, b) => a - b)
+    const isLeapYear = (y: number) => (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0)
+    const today = new Date()
+    const currentYear = today.getFullYear()
+    const todayDayOfYear = Math.floor((Date.UTC(currentYear, today.getMonth(), today.getDate()) - Date.UTC(currentYear, 0, 1)) / 86400000) + 1
+    const maxDayOverall = years.length > 0 ? Math.max(...years.map((y) => (isLeapYear(y) ? 366 : 365))) : 365
+
+    const cumulative = new Map<number, number>(years.map((y) => [y, 0]))
+    const data: Array<Record<string, number>> = []
+
+    for (let day = 1; day <= maxDayOverall; day++) {
+      const row: Record<string, number> = { dayOfYear: day }
+      for (const y of years) {
+        const daysInYear = isLeapYear(y) ? 366 : 365
+        if (day > daysInYear) continue
+        if (y === currentYear && day > todayDayOfYear) continue
+        const minutesToday = yearDayMinutes.get(y)!.get(day) ?? 0
+        const newCum = (cumulative.get(y) ?? 0) + minutesToday
+        cumulative.set(y, newCum)
+        row[String(y)] = parseFloat((newCum / 60).toFixed(1))
+      }
+      data.push(row)
+    }
+
+    return { data, years }
+  }, [rawSessions])
 
   // const heatmapStartDate = useMemo(() => {
   //   if (filterYear === 'all') {
@@ -901,6 +949,62 @@ export default function Dashboard() {
                 <span key={i} className={styles.legendSwatch} style={{ background: c }} />
               ))}
               <span>More</span>
+            </div>
+          </section>
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Cumulative Playtime by Year</h2>
+            <div className={styles.sectionSubtitle}>Total accumulated hours through each day of the year</div>
+            <div className={styles.largeChartWrapper}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={cumulativeYearlyData.data} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
+                  <XAxis
+                    dataKey="dayOfYear"
+                    type="number"
+                    domain={[1, 366]}
+                    tick={{ fontSize: 11, fill: '#9aa3b2' }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `Day ${v}`}
+                  />
+                  <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={36} />
+                  <Tooltip
+                    formatter={(value: any) => `${value}h`}
+                    labelFormatter={(v) => `Day ${v}`}
+                    contentStyle={{ background: '#232b38', border: '1px solid #2c3442', borderRadius: 8, color: '#eef1f6' }}
+                    itemStyle={{ color: '#eef1f6' }}
+                    labelStyle={{ color: '#9aa3b2' }}
+                  />
+                  <Legend
+                    wrapperStyle={{ fontSize: 12, color: '#9aa3b2', cursor: 'pointer' }}
+                    onClick={(entry: any) => {
+                      const y = Number(entry.value)
+                      setHighlightedYear((prev) => (prev === y ? null : y))
+                    }}
+                    formatter={(value: string) => (
+                      <span style={{ color: highlightedYear === null || highlightedYear === Number(value) ? '#eef1f6' : '#5d6675' }}>
+                        {value}
+                      </span>
+                    )}
+                  />
+                  {cumulativeYearlyData.years.map((y, index) => {
+                    const isDimmed = highlightedYear !== null && highlightedYear !== y
+                    return (
+                      <Line
+                        key={y}
+                        dataKey={String(y)}
+                        name={String(y)}
+                        stroke={COLORS[index % COLORS.length]}
+                        strokeOpacity={isDimmed ? 0.15 : 1}
+                        dot={false}
+                        strokeWidth={highlightedYear === y ? 3 : 2}
+                        connectNulls={false}
+                      />
+                    )
+                  })}
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </section>
         </>
