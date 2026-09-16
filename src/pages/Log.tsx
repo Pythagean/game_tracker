@@ -10,6 +10,7 @@ interface LogSession {
   game_mode: string | null
   platform: string | null
   game: string | null
+  franchise: string | null
   players: string[]
 }
 
@@ -39,6 +40,8 @@ export default function Log() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filterYear, setFilterYear] = useState<number | 'all'>(new Date().getFullYear())
+  const [filterGame, setFilterGame] = useState<string | 'all'>('all')
+  const [filterFranchise, setFilterFranchise] = useState<string | 'all'>('all')
 
   useEffect(() => {
     let mounted = true
@@ -49,7 +52,7 @@ export default function Log() {
       const [sessionsResult, playersResult, sessionPlayersResult] = await Promise.all([
         supabase
           .from('sessions')
-          .select('session_id, start_date, start_time, duration_minutes, game_mode, games ( title ), platforms ( name )')
+          .select('session_id, start_date, start_time, duration_minutes, game_mode, games ( title, franchises ( name ) ), platforms ( name )')
           .eq('user_id', FIXED_USER_ID)
           .order('start_date', { ascending: false })
           .order('start_time', { ascending: false }),
@@ -83,6 +86,7 @@ export default function Log() {
         game_mode: s.game_mode ?? null,
         platform: s.platforms?.name ?? null,
         game: s.games?.title ?? null,
+        franchise: s.games?.franchises?.name ?? null,
         players: sessionPlayersMap.get(s.session_id) ?? [],
       }))
 
@@ -100,10 +104,35 @@ export default function Log() {
     return Array.from(years).sort((a, b) => b - a)
   }, [sessions])
 
+  const availableGames = useMemo(() => {
+    const games = new Set<string>()
+    for (const s of sessions) {
+      if (s.game) games.add(s.game)
+    }
+    return Array.from(games).sort()
+  }, [sessions])
+
+  const availableFranchises = useMemo(() => {
+    const franchises = new Set<string>()
+    for (const s of sessions) {
+      if (s.franchise) franchises.add(s.franchise)
+    }
+    return Array.from(franchises).sort()
+  }, [sessions])
+
   const filteredSessions = useMemo(() => {
-    if (filterYear === 'all') return sessions
-    return sessions.filter((s) => s.start_date && new Date(s.start_date).getFullYear() === filterYear)
-  }, [sessions, filterYear])
+    let result = sessions
+    if (filterYear !== 'all') {
+      result = result.filter((s) => s.start_date && new Date(s.start_date).getFullYear() === filterYear)
+    }
+    if (filterGame !== 'all') {
+      result = result.filter((s) => s.game === filterGame)
+    }
+    if (filterFranchise !== 'all') {
+      result = result.filter((s) => s.franchise === filterFranchise)
+    }
+    return result
+  }, [sessions, filterYear, filterGame, filterFranchise])
 
   return (
     <div className={styles.container}>
@@ -112,9 +141,12 @@ export default function Log() {
       <div className={styles.filterBar}>
         <div className={styles.filterBarHeader}>
           <span className={styles.filterBarTitle}>Filters</span>
-          {filterYear !== 'all' && (
-            <button onClick={() => setFilterYear('all')} className={styles.clearFiltersBtn}>
-              Clear all (1)
+          {(filterYear !== 'all' || filterGame !== 'all' || filterFranchise !== 'all') && (
+            <button
+              onClick={() => { setFilterYear('all'); setFilterGame('all'); setFilterFranchise('all') }}
+              className={styles.clearFiltersBtn}
+            >
+              Clear all ({Number(filterYear !== 'all') + Number(filterGame !== 'all') + Number(filterFranchise !== 'all')})
             </button>
           )}
         </div>
@@ -128,6 +160,28 @@ export default function Log() {
             >
               <option value="all">All</option>
               {availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+          <div className={styles.filterGroup}>
+            <label className={styles.filterLabel}>Game</label>
+            <select
+              className={`${styles.filterSelect}${filterGame !== 'all' ? ` ${styles.filterSelectActive}` : ''}`}
+              value={filterGame}
+              onChange={(e) => setFilterGame(e.target.value)}
+            >
+              <option value="all">All</option>
+              {availableGames.map((g) => <option key={g} value={g}>{g}</option>)}
+            </select>
+          </div>
+          <div className={styles.filterGroup}>
+            <label className={styles.filterLabel}>Franchise</label>
+            <select
+              className={`${styles.filterSelect}${filterFranchise !== 'all' ? ` ${styles.filterSelectActive}` : ''}`}
+              value={filterFranchise}
+              onChange={(e) => setFilterFranchise(e.target.value)}
+            >
+              <option value="all">All</option>
+              {availableFranchises.map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
           </div>
         </div>
@@ -147,6 +201,7 @@ export default function Log() {
                   <th>Date</th>
                   <th>Time</th>
                   <th>Game</th>
+                  <th>Franchise</th>
                   <th>Platform</th>
                   <th>Mode</th>
                   <th>Duration</th>
@@ -159,6 +214,7 @@ export default function Log() {
                     <td>{formatDate(s.start_date)}</td>
                     <td className={styles.dim}>{formatTime(s.start_time)}</td>
                     <td className={styles.gameCell}>{s.game ?? '-'}</td>
+                    <td className={styles.dim}>{s.franchise ?? '-'}</td>
                     <td className={styles.dim}>{s.platform ?? '-'}</td>
                     <td className={styles.dim}>{s.game_mode ?? '-'}</td>
                     <td className={styles.durationCell}>{formatDuration(s.duration_minutes)}</td>

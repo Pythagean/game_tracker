@@ -12,6 +12,7 @@ interface RawSession {
   platform: string | null
   game: string | null
   cover_url: string | null
+  franchise: string | null
   players: string[]
 }
 
@@ -91,6 +92,7 @@ export default function Games() {
   const [filterWeekday, setFilterWeekday] = useState('all')
   const [filterPlatform, setFilterPlatform] = useState('all')
   const [filterPlayedWith, setFilterPlayedWith] = useState('all')
+  const [filterFranchise, setFilterFranchise] = useState('all')
   const [sortKey, setSortKey] = useState<SortKey>('recent')
 
   const [selectedGame, setSelectedGame] = useState<SelectedGameRef | null>(null)
@@ -106,7 +108,7 @@ export default function Games() {
       const [sessionsResult, playersResult, sessionPlayersResult] = await Promise.all([
         supabase
           .from('sessions')
-          .select('session_id, game_id, start_date, duration_minutes, game_mode, games ( title, cover_url ), platforms ( name )')
+          .select('session_id, game_id, start_date, duration_minutes, game_mode, games ( title, cover_url, franchises ( name ) ), platforms ( name )')
           .eq('user_id', FIXED_USER_ID)
           .order('start_date', { ascending: true }),
         supabase.from('players').select('player_id, name'),
@@ -140,6 +142,7 @@ export default function Games() {
         platform: s.platforms?.name ?? null,
         game: s.games?.title ?? null,
         cover_url: s.games?.cover_url ?? null,
+        franchise: s.games?.franchises?.name ?? null,
         players: sessionPlayersMap.get(s.session_id) ?? [],
       }))
 
@@ -209,6 +212,7 @@ export default function Games() {
     const weekdays = new Set<string>()
     const platformHours = new Map<string, number>()
     const playerHours = new Map<string, number>()
+    const franchiseHours = new Map<string, number>()
     for (const s of rawSessions) {
       if (!s.start_date) continue
       const d = new Date(s.start_date)
@@ -217,6 +221,9 @@ export default function Games() {
       weekdays.add(d.toLocaleString('default', { weekday: 'long' }))
       if (s.platform) {
         platformHours.set(s.platform, (platformHours.get(s.platform) ?? 0) + s.duration_minutes)
+      }
+      if (s.franchise) {
+        franchiseHours.set(s.franchise, (franchiseHours.get(s.franchise) ?? 0) + s.duration_minutes)
       }
       for (const p of s.players) {
         playerHours.set(p, (playerHours.get(p) ?? 0) + s.duration_minutes)
@@ -227,6 +234,9 @@ export default function Games() {
       months: MONTH_ORDER.filter((m) => months.has(m)),
       weekdays: WEEKDAY_ORDER.filter((d) => weekdays.has(d)),
       platforms: Array.from(platformHours.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([name]) => name),
+      franchises: Array.from(franchiseHours.entries())
         .sort((a, b) => b[1] - a[1])
         .map(([name]) => name),
       players: Array.from(playerHours.entries())
@@ -246,9 +256,10 @@ export default function Games() {
       if (filterWeekday !== 'all' && d.toLocaleString('default', { weekday: 'long' }) !== filterWeekday) return false
       if (filterPlatform !== 'all' && s.platform !== filterPlatform) return false
       if (filterPlayedWith !== 'all' && !s.players.includes(filterPlayedWith)) return false
+      if (filterFranchise !== 'all' && s.franchise !== filterFranchise) return false
       return true
     })
-  }, [rawSessions, filterYear, filterMonth, filterWeekday, filterPlatform, filterPlayedWith])
+  }, [rawSessions, filterYear, filterMonth, filterWeekday, filterPlatform, filterPlayedWith, filterFranchise])
 
   // Aggregate filtered sessions into one card per game
   const games: GameAgg[] = useMemo(() => {
@@ -382,7 +393,7 @@ export default function Games() {
 
   const activeFilterCount = [
     filterYear !== 'all', filterMonth !== 'all', filterWeekday !== 'all',
-    filterPlatform !== 'all', filterPlayedWith !== 'all',
+    filterPlatform !== 'all', filterPlayedWith !== 'all', filterFranchise !== 'all',
   ].filter(Boolean).length
 
   function resetFilters() {
@@ -391,6 +402,7 @@ export default function Games() {
     setFilterWeekday('all')
     setFilterPlatform('all')
     setFilterPlayedWith('all')
+    setFilterFranchise('all')
   }
 
   function openGame(g: GameAgg) {
@@ -434,6 +446,7 @@ export default function Games() {
             { label: 'Month', value: filterMonth, onChange: setFilterMonth, options: filterOptions.months },
             { label: 'Weekday', value: filterWeekday, onChange: setFilterWeekday, options: filterOptions.weekdays },
             { label: 'Platform', value: filterPlatform, onChange: setFilterPlatform, options: filterOptions.platforms },
+            { label: 'Franchise', value: filterFranchise, onChange: setFilterFranchise, options: filterOptions.franchises },
             { label: 'Played With', value: filterPlayedWith, onChange: setFilterPlayedWith, options: filterOptions.players },
           ] as const).map(({ label, value, onChange, options }) => (
             <div key={label} className={styles.filterGroup}>
