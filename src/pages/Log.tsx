@@ -113,11 +113,18 @@ export default function Log() {
   }, [sessions])
 
   const availableFranchises = useMemo(() => {
-    const franchises = new Set<string>()
+    const franchiseGames = new Map<string, Set<string>>()
     for (const s of sessions) {
-      if (s.franchise) franchises.add(s.franchise)
+      if (s.franchise && s.game) {
+        if (!franchiseGames.has(s.franchise)) {
+          franchiseGames.set(s.franchise, new Set())
+        }
+        franchiseGames.get(s.franchise)!.add(s.game)
+      }
     }
-    return Array.from(franchises).sort()
+    return Array.from(franchiseGames.entries())
+      .sort((a, b) => b[1].size - a[1].size)
+      .map(([name, games]) => ({ name, count: games.size }))
   }, [sessions])
 
   const filteredSessions = useMemo(() => {
@@ -181,7 +188,7 @@ export default function Log() {
               onChange={(e) => setFilterFranchise(e.target.value)}
             >
               <option value="all">All</option>
-              {availableFranchises.map((f) => <option key={f} value={f}>{f}</option>)}
+              {availableFranchises.map((f) => <option key={f.name} value={f.name}>{f.name} ({f.count})</option>)}
             </select>
           </div>
         </div>

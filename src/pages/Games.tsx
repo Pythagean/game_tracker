@@ -212,7 +212,7 @@ export default function Games() {
     const weekdays = new Set<string>()
     const platformHours = new Map<string, number>()
     const playerHours = new Map<string, number>()
-    const franchiseHours = new Map<string, number>()
+    const franchiseGames = new Map<string, Set<number>>()
     for (const s of rawSessions) {
       if (!s.start_date) continue
       const d = new Date(s.start_date)
@@ -222,8 +222,11 @@ export default function Games() {
       if (s.platform) {
         platformHours.set(s.platform, (platformHours.get(s.platform) ?? 0) + s.duration_minutes)
       }
-      if (s.franchise) {
-        franchiseHours.set(s.franchise, (franchiseHours.get(s.franchise) ?? 0) + s.duration_minutes)
+      if (s.franchise && s.game_id !== null) {
+        if (!franchiseGames.has(s.franchise)) {
+          franchiseGames.set(s.franchise, new Set())
+        }
+        franchiseGames.get(s.franchise)!.add(s.game_id)
       }
       for (const p of s.players) {
         playerHours.set(p, (playerHours.get(p) ?? 0) + s.duration_minutes)
@@ -236,9 +239,9 @@ export default function Games() {
       platforms: Array.from(platformHours.entries())
         .sort((a, b) => b[1] - a[1])
         .map(([name]) => name),
-      franchises: Array.from(franchiseHours.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([name]) => name),
+      franchises: Array.from(franchiseGames.entries())
+        .sort((a, b) => b[1].size - a[1].size)
+        .map(([name, games]) => ({ name, count: games.size })),
       players: Array.from(playerHours.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
@@ -446,7 +449,6 @@ export default function Games() {
             { label: 'Month', value: filterMonth, onChange: setFilterMonth, options: filterOptions.months },
             { label: 'Weekday', value: filterWeekday, onChange: setFilterWeekday, options: filterOptions.weekdays },
             { label: 'Platform', value: filterPlatform, onChange: setFilterPlatform, options: filterOptions.platforms },
-            { label: 'Franchise', value: filterFranchise, onChange: setFilterFranchise, options: filterOptions.franchises },
             { label: 'Played With', value: filterPlayedWith, onChange: setFilterPlayedWith, options: filterOptions.players },
           ] as const).map(({ label, value, onChange, options }) => (
             <div key={label} className={styles.filterGroup}>
@@ -463,6 +465,17 @@ export default function Games() {
               </select>
             </div>
           ))}
+          <div className={styles.filterGroup}>
+            <label className={styles.filterLabel}>Franchise</label>
+            <select
+              className={`${styles.filterSelect}${String(filterFranchise) !== 'all' ? ` ${styles.filterSelectActive}` : ''}`}
+              value={String(filterFranchise)}
+              onChange={(e) => setFilterFranchise(e.target.value)}
+            >
+              <option value="all">All</option>
+              {filterOptions.franchises.map((f) => <option key={f.name} value={f.name}>{f.name} ({f.count})</option>)}
+            </select>
+          </div>
         </div>
       </div>
 
