@@ -13,6 +13,8 @@ interface RawSession {
   game: string | null
   cover_url: string | null
   franchise: string | null
+  publisher: string | null
+  developers: string[]
   players: string[]
 }
 
@@ -93,6 +95,8 @@ export default function Games() {
   const [filterPlatform, setFilterPlatform] = useState('all')
   const [filterPlayedWith, setFilterPlayedWith] = useState('all')
   const [filterFranchise, setFilterFranchise] = useState('all')
+  const [filterDeveloper, setFilterDeveloper] = useState('all')
+  const [filterPublisher, setFilterPublisher] = useState('all')
   const [sortKey, setSortKey] = useState<SortKey>('recent')
 
   const [selectedGame, setSelectedGame] = useState<SelectedGameRef | null>(null)
@@ -108,7 +112,7 @@ export default function Games() {
       const [sessionsResult, playersResult, sessionPlayersResult] = await Promise.all([
         supabase
           .from('sessions')
-          .select('session_id, game_id, start_date, duration_minutes, game_mode, games ( title, cover_url, franchises ( name ) ), platforms ( name )')
+          .select('session_id, game_id, start_date, duration_minutes, game_mode, games ( title, cover_url, franchises ( name ), publishers ( name ), game_developer ( developers ( name ) ) ), platforms ( name )')
           .eq('user_id', FIXED_USER_ID)
           .order('start_date', { ascending: true }),
         supabase.from('players').select('player_id, name'),
@@ -143,6 +147,8 @@ export default function Games() {
         game: s.games?.title ?? null,
         cover_url: s.games?.cover_url ?? null,
         franchise: s.games?.franchises?.name ?? null,
+        publisher: s.games?.publishers?.name ?? null,
+        developers: (s.games?.game_developer ?? []).map((gd: any) => gd.developers?.name).filter(Boolean),
         players: sessionPlayersMap.get(s.session_id) ?? [],
       }))
 
@@ -213,6 +219,8 @@ export default function Games() {
     const platformHours = new Map<string, number>()
     const playerHours = new Map<string, number>()
     const franchiseGames = new Map<string, Set<number>>()
+    const publisherGames = new Map<string, Set<number>>()
+    const developerGames = new Map<string, Set<number>>()
     for (const s of rawSessions) {
       if (!s.start_date) continue
       const d = new Date(s.start_date)
@@ -228,6 +236,20 @@ export default function Games() {
         }
         franchiseGames.get(s.franchise)!.add(s.game_id)
       }
+      if (s.publisher && s.game_id !== null) {
+        if (!publisherGames.has(s.publisher)) {
+          publisherGames.set(s.publisher, new Set())
+        }
+        publisherGames.get(s.publisher)!.add(s.game_id)
+      }
+      if (s.game_id !== null) {
+        for (const dev of s.developers) {
+          if (!developerGames.has(dev)) {
+            developerGames.set(dev, new Set())
+          }
+          developerGames.get(dev)!.add(s.game_id)
+        }
+      }
       for (const p of s.players) {
         playerHours.set(p, (playerHours.get(p) ?? 0) + s.duration_minutes)
       }
@@ -240,6 +262,12 @@ export default function Games() {
         .sort((a, b) => b[1] - a[1])
         .map(([name]) => name),
       franchises: Array.from(franchiseGames.entries())
+        .sort((a, b) => b[1].size - a[1].size)
+        .map(([name, games]) => ({ name, count: games.size })),
+      publishers: Array.from(publisherGames.entries())
+        .sort((a, b) => b[1].size - a[1].size)
+        .map(([name, games]) => ({ name, count: games.size })),
+      developers: Array.from(developerGames.entries())
         .sort((a, b) => b[1].size - a[1].size)
         .map(([name, games]) => ({ name, count: games.size })),
       players: Array.from(playerHours.entries())
@@ -260,9 +288,11 @@ export default function Games() {
       if (filterPlatform !== 'all' && s.platform !== filterPlatform) return false
       if (filterPlayedWith !== 'all' && !s.players.includes(filterPlayedWith)) return false
       if (filterFranchise !== 'all' && s.franchise !== filterFranchise) return false
+      if (filterPublisher !== 'all' && s.publisher !== filterPublisher) return false
+      if (filterDeveloper !== 'all' && !s.developers.includes(filterDeveloper)) return false
       return true
     })
-  }, [rawSessions, filterYear, filterMonth, filterWeekday, filterPlatform, filterPlayedWith, filterFranchise])
+  }, [rawSessions, filterYear, filterMonth, filterWeekday, filterPlatform, filterPlayedWith, filterFranchise, filterPublisher, filterDeveloper])
 
   // Aggregate filtered sessions into one card per game
   const games: GameAgg[] = useMemo(() => {
@@ -396,7 +426,7 @@ export default function Games() {
 
   const activeFilterCount = [
     filterYear !== 'all', filterMonth !== 'all', filterWeekday !== 'all',
-    filterPlatform !== 'all', filterPlayedWith !== 'all', filterFranchise !== 'all',
+    filterPlatform !== 'all', filterPlayedWith !== 'all', filterFranchise !== 'all', filterDeveloper !== 'all', filterPublisher !== 'all',
   ].filter(Boolean).length
 
   function resetFilters() {
@@ -406,6 +436,8 @@ export default function Games() {
     setFilterPlatform('all')
     setFilterPlayedWith('all')
     setFilterFranchise('all')
+    setFilterDeveloper('all')
+    setFilterPublisher('all')
   }
 
   function openGame(g: GameAgg) {
@@ -474,6 +506,30 @@ export default function Games() {
             >
               <option value="all">All</option>
               {filterOptions.franchises.map((f) => <option key={f.name} value={f.name}>{f.name} ({f.count})</option>)}
+            </select>
+          </div>
+        </div>
+        <div className={styles.filterGrid} style={{ marginTop: '1.5rem' }}>
+          <div className={styles.filterGroup}>
+            <label className={styles.filterLabel}>Developer</label>
+            <select
+              className={`${styles.filterSelect}${String(filterDeveloper) !== 'all' ? ` ${styles.filterSelectActive}` : ''}`}
+              value={String(filterDeveloper)}
+              onChange={(e) => setFilterDeveloper(e.target.value)}
+            >
+              <option value="all">All</option>
+              {filterOptions.developers.map((f) => <option key={f.name} value={f.name}>{f.name} ({f.count})</option>)}
+            </select>
+          </div>
+          <div className={styles.filterGroup}>
+            <label className={styles.filterLabel}>Publisher</label>
+            <select
+              className={`${styles.filterSelect}${String(filterPublisher) !== 'all' ? ` ${styles.filterSelectActive}` : ''}`}
+              value={String(filterPublisher)}
+              onChange={(e) => setFilterPublisher(e.target.value)}
+            >
+              <option value="all">All</option>
+              {filterOptions.publishers.map((f) => <option key={f.name} value={f.name}>{f.name} ({f.count})</option>)}
             </select>
           </div>
         </div>
