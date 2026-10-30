@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef, Fragment } from 'react'
 import { supabase, FIXED_USER_ID } from '@/lib/supabase'
 import {
   BarChart,
@@ -22,12 +22,30 @@ import styles from './Dashboard.module.css'
 interface RawSession {
   session_id: number
   start_date: string
+  start_time: string | null
   duration_minutes: number
   game_mode: string
   platform: string | null
   game: string | null
   cover_url: string | null
   players: string[]
+  genres: string[]
+  themes: string[]
+  franchise: string | null
+  publisher: string | null
+  developers: string[]
+  release_date: string | null
+}
+
+interface GameMeta {
+  title: string
+  cover: string | null
+  genres: string[]
+  themes: string[]
+  franchise: string | null
+  publisher: string | null
+  developers: string[]
+  release_date: string | null
 }
 
 interface DayGame { title: string; cover: string | null; minutes: number }
@@ -64,6 +82,75 @@ const COLORS = ['#6366f1', '#8b7cf0', '#ec4899', '#f2a541', '#10b981', '#06b6d4'
 const HEATMAP_COLORS = ['#232a36', '#3a2a14', '#5c4118', '#8a5f1d', '#c08526', '#f2a541']
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const WEEKDAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+
+// Sums playtime per key (a session can contribute to several keys, e.g. a game
+// with multiple genres counts fully toward each) and returns the top entries.
+function topByMinutes(sessions: RawSession[], keysFor: (s: RawSession) => string[], limit = 10) {
+  const map = new Map<string, number>()
+  for (const s of sessions) {
+    for (const key of keysFor(s)) {
+      map.set(key, (map.get(key) ?? 0) + s.duration_minutes)
+    }
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([name, minutes]) => ({ name, hours: parseFloat(formatHours(minutes)), minutes }))
+}
+
+type GroupKey = 'genre' | 'theme' | 'franchise' | 'developer' | 'publisher'
+
+const GROUP_OPTIONS: {
+  key: GroupKey
+  label: string
+  color: string
+  note: string
+  keysFor: (s: RawSession) => string[]
+}[] = [
+  { key: 'genre', label: 'Genre', color: '#10b981', note: 'games with several genres count toward each', keysFor: (s) => s.genres },
+  { key: 'theme', label: 'Theme', color: '#3b82f6', note: 'games with several themes count toward each', keysFor: (s) => s.themes },
+  { key: 'franchise', label: 'Franchise', color: '#ef4444', note: 'games with no franchise recorded are left out', keysFor: (s) => (s.franchise ? [s.franchise] : []) },
+  { key: 'developer', label: 'Developer', color: '#ec4899', note: 'games with several developers count toward each', keysFor: (s) => s.developers },
+  { key: 'publisher', label: 'Publisher', color: '#f2a541', note: 'games with no publisher recorded are left out', keysFor: (s) => (s.publisher ? [s.publisher] : []) },
+]
+
+const SESSION_LENGTH_BUCKETS = [
+  { label: '< 30m', max: 30 },
+  { label: '30m – 1h', max: 60 },
+  { label: '1 – 2h', max: 120 },
+  { label: '2 – 4h', max: 240 },
+  { label: '4h+', max: Infinity },
+]
+
+function HorizontalBars({ data, color }: { data: { name: string; hours: number; minutes: number }[]; color: string }) {
+  if (data.length === 0) return <div className={styles.timeNote}>No data for the current filters</div>
+  return (
+    <div style={{ height: Math.max(120, data.length * 32 + 16) }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart layout="vertical" data={data} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#2c3442" />
+          <XAxis type="number" tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} />
+          <YAxis type="category" dataKey="name" width={130} interval={0} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+          <Bar dataKey="hours" fill={color} radius={[0, 3, 3, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+const CountTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const { sessions, minutes } = payload[0].payload
+    return (
+      <div className={styles.tooltip}>
+        <div className={styles.tooltipLabel}>{label}</div>
+        <div className={styles.tooltipValue}>{sessions} sessions · {formatHours(minutes)}h total</div>
+      </div>
+    )
+  }
+  return null
+}
 
 function intensityForMinutes(minutes: number) {
   const hours = minutes / 60
@@ -256,6 +343,77 @@ function PlaytimeCalendar({ year, dayMinutes }: { year: number; dayMinutes: Map<
   )
 }
 
+/**
+ * Weekday x hour-of-day heatmap of playtime. A session's minutes are spread across
+ * the hours it spans (rolling into the next weekday past midnight). Sessions with
+ * no recorded start time can't be placed and are excluded.
+ */
+function TimeOfDayHeatmap({ sessions }: { sessions: RawSession[] }) {
+  const { grid, max, unplaced } = useMemo(() => {
+    const grid = Array.from({ length: 7 }, () => new Array<number>(24).fill(0))
+    let unplaced = 0
+    for (const s of sessions) {
+      const match = s.start_time ? /^(\d{1,2}):(\d{2})/.exec(s.start_time) : null
+      if (!match || !s.start_date) { unplaced++; continue }
+      let day = (new Date(`${s.start_date.split('T')[0]}T00:00:00`).getDay() + 6) % 7
+      let cursor = Number(match[1]) * 60 + Number(match[2])
+      let remaining = s.duration_minutes
+      while (remaining > 0) {
+        const hour = Math.floor(cursor / 60)
+        const chunk = Math.min(remaining, (hour + 1) * 60 - cursor)
+        grid[day][hour] += chunk
+        remaining -= chunk
+        cursor += chunk
+        if (cursor >= 1440) { cursor = 0; day = (day + 1) % 7 }
+      }
+    }
+    return { grid, max: Math.max(...grid.flat()), unplaced }
+  }, [sessions])
+
+  function formatDuration(minutes: number) {
+    const h = Math.floor(minutes / 60)
+    const m = Math.round(minutes % 60)
+    return h > 0 ? `${h}h ${m}m` : `${m}m`
+  }
+
+  return (
+    <div>
+      <div className={styles.timeGrid}>
+        <span />
+        {Array.from({ length: 24 }, (_, h) => (
+          <span key={h} className={styles.timeHourLabel}>{h % 3 === 0 ? h : ''}</span>
+        ))}
+        {WEEKDAY_ORDER.map((weekday, d) => (
+          <Fragment key={weekday}>
+            <span className={styles.timeDayLabel}>{weekday.slice(0, 3)}</span>
+            {grid[d].map((minutes, h) => {
+              const level = max > 0 && minutes > 0 ? Math.max(1, Math.ceil((minutes / max) * 5)) : 0
+              return (
+                <span
+                  key={h}
+                  className={styles.timeCell}
+                  style={{ background: HEATMAP_COLORS[level] }}
+                  title={`${weekday} ${String(h).padStart(2, '0')}:00 — ${minutes > 0 ? formatDuration(minutes) : 'no play'}`}
+                />
+              )
+            })}
+          </Fragment>
+        ))}
+      </div>
+      <div className={styles.calendarLegend}>
+        <span>Less</span>
+        {HEATMAP_COLORS.map((c, i) => (
+          <span key={i} className={styles.legendSwatch} style={{ background: c }} />
+        ))}
+        <span>More</span>
+      </div>
+      {unplaced > 0 && (
+        <div className={styles.timeNote}>{unplaced} session{unplaced === 1 ? '' : 's'} without a start time not shown</div>
+      )}
+    </div>
+  )
+}
+
 const MAX_SPLIT_COVERS = 4
 
 /**
@@ -373,12 +531,27 @@ export default function Dashboard() {
   // Which year's line is highlighted (dimming the rest) in the cumulative playtime chart.
   const [highlightedYear, setHighlightedYear] = useState<number | null>(null)
 
+  const [groupBy, setGroupBy] = useState<GroupKey>('genre')
+
   // The calendar always needs a concrete year to render, even though the page filter
   // can be "All". Deriving it (rather than holding separate state) is what keeps the
   // calendar's year control and the Year filter dropdown perfectly in sync both ways:
   // moving the calendar calls setFilterYear directly, and picking a year in the filter
   // flows straight through here.
   const calendarYear = filterYear !== 'all' ? filterYear : new Date().getFullYear()
+
+  // The app nav is sticky, so the sticky filter bar has to sit just below it.
+  const containerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const nav = document.querySelector('nav')
+    const container = containerRef.current
+    if (!nav || !container) return
+    const update = () => container.style.setProperty('--app-nav-height', `${nav.getBoundingClientRect().height}px`)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(nav)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -389,12 +562,19 @@ export default function Dashboard() {
       const [sessionsResult, playersResult, sessionPlayersResult, gamesResult] = await Promise.all([
         supabase
           .from('sessions')
-          .select('session_id, start_date, duration_minutes, game_mode, game_id, platforms ( name )')
+          .select('session_id, start_date, start_time, duration_minutes, game_mode, game_id, platforms ( name )')
           .eq('user_id', FIXED_USER_ID)
           .order('start_date', { ascending: true }),
         supabase.from('players').select('player_id, name'),
         supabase.from('session_player').select('*'),
-        supabase.from('games').select('game_id, title, cover_url'),
+        supabase.from('games').select(`
+          game_id, title, cover_url, release_date,
+          franchises ( name ),
+          publishers ( name ),
+          game_genre ( genres ( name ) ),
+          game_theme ( themes ( name ) ),
+          game_developer ( developers ( name ) )
+        `),
       ])
 
       if (!mounted) return
@@ -409,11 +589,18 @@ export default function Dashboard() {
         playerMap.set(p.player_id, p.name)
       }
 
-      const gameMap = new Map<number, string>()
-      const coverMap = new Map<number, string>()
+      const gameMap = new Map<number, GameMeta>()
       for (const g of gamesResult.data as any[]) {
-        gameMap.set(g.game_id, g.title)
-        if (g.cover_url) coverMap.set(g.game_id, g.cover_url)
+        gameMap.set(g.game_id, {
+          title: g.title,
+          cover: g.cover_url ?? null,
+          genres: (g.game_genre ?? []).map((x: any) => x.genres?.name).filter(Boolean),
+          themes: (g.game_theme ?? []).map((x: any) => x.themes?.name).filter(Boolean),
+          franchise: g.franchises?.name ?? null,
+          publisher: g.publishers?.name ?? null,
+          developers: (g.game_developer ?? []).map((x: any) => x.developers?.name).filter(Boolean),
+          release_date: g.release_date ?? null,
+        })
       }
 
       const sessionPlayersMap = new Map<number, string[]>()
@@ -423,16 +610,26 @@ export default function Dashboard() {
         if (name) sessionPlayersMap.get(sp.session_id)!.push(name)
       }
 
-      const sessions: RawSession[] = (sessionsResult.data as any[]).map((s) => ({
-        session_id: s.session_id,
-        start_date: s.start_date,
-        duration_minutes: Number(s.duration_minutes) || 0,
-        game_mode: s.game_mode ?? 'Unknown',
-        platform: s.platforms?.name ?? null,
-        game: s.game_id ? (gameMap.get(s.game_id) ?? null) : null,
-        cover_url: s.game_id ? (coverMap.get(s.game_id) ?? null) : null,
-        players: sessionPlayersMap.get(s.session_id) ?? [],
-      }))
+      const sessions: RawSession[] = (sessionsResult.data as any[]).map((s) => {
+        const meta = s.game_id ? gameMap.get(s.game_id) : undefined
+        return {
+          session_id: s.session_id,
+          start_date: s.start_date,
+          start_time: s.start_time ?? null,
+          duration_minutes: Number(s.duration_minutes) || 0,
+          game_mode: s.game_mode ?? 'Unknown',
+          platform: s.platforms?.name ?? null,
+          game: meta?.title ?? null,
+          cover_url: meta?.cover ?? null,
+          players: sessionPlayersMap.get(s.session_id) ?? [],
+          genres: meta?.genres ?? [],
+          themes: meta?.themes ?? [],
+          franchise: meta?.franchise ?? null,
+          publisher: meta?.publisher ?? null,
+          developers: meta?.developers ?? [],
+          release_date: meta?.release_date ?? null,
+        }
+      })
 
       setRawSessions(sessions)
       setLoading(false)
@@ -560,6 +757,48 @@ export default function Dashboard() {
     return Array.from(map.entries())
       .sort((a, b) => b[1] - a[1])
       .map(([name, minutes]) => ({ name, hours: parseFloat(formatHours(minutes)), minutes }))
+  }, [filteredSessions])
+
+  const activeGroup = GROUP_OPTIONS.find((g) => g.key === groupBy)!
+  const groupData = useMemo(
+    () => topByMinutes(filteredSessions, GROUP_OPTIONS.find((g) => g.key === groupBy)!.keysFor),
+    [filteredSessions, groupBy],
+  )
+
+  // Hours by the release year of the game played, plus how much of the playtime
+  // went to games released within a year of the session ("new releases").
+  const releaseYearData = useMemo(() => {
+    const map = new Map<number, number>()
+    let newMinutes = 0
+    let datedMinutes = 0
+    for (const s of filteredSessions) {
+      if (!s.release_date || !s.start_date) continue
+      const released = new Date(`${s.release_date.split('T')[0]}T00:00:00`)
+      const played = new Date(`${s.start_date.split('T')[0]}T00:00:00`)
+      const year = released.getFullYear()
+      map.set(year, (map.get(year) ?? 0) + s.duration_minutes)
+      datedMinutes += s.duration_minutes
+      if (played.getTime() - released.getTime() <= 365 * 86400000) newMinutes += s.duration_minutes
+    }
+    const years = Array.from(map.keys())
+    const data: { year: string; hours: number; minutes: number }[] = []
+    if (years.length > 0) {
+      for (let y = Math.min(...years); y <= Math.max(...years); y++) {
+        const minutes = map.get(y) ?? 0
+        data.push({ year: String(y), hours: parseFloat(formatHours(minutes)), minutes })
+      }
+    }
+    return { data, newPercent: datedMinutes > 0 ? Math.round((newMinutes / datedMinutes) * 100) : 0 }
+  }, [filteredSessions])
+
+  const sessionLengthData = useMemo(() => {
+    const buckets = SESSION_LENGTH_BUCKETS.map((b) => ({ bucket: b.label, sessions: 0, minutes: 0 }))
+    for (const s of filteredSessions) {
+      const i = SESSION_LENGTH_BUCKETS.findIndex((b) => s.duration_minutes < b.max)
+      buckets[i].sessions += 1
+      buckets[i].minutes += s.duration_minutes
+    }
+    return buckets
   }, [filteredSessions])
 
   // const heatmapData = useMemo(() => {
@@ -781,7 +1020,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} ref={containerRef}>
       <h1 className={styles.heading} style={{ marginBottom: 16 }}>Dashboard</h1>
 
       {/* Filter bar */}
@@ -1043,6 +1282,67 @@ export default function Dashboard() {
               </div>
             </section>
           </div>
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Playtime by {activeGroup.label}</h2>
+            <div className={styles.sectionSubtitle}>Top 10 — {activeGroup.note}</div>
+            <div className={styles.tabRow} role="tablist">
+              {GROUP_OPTIONS.map((g) => (
+                <button
+                  key={g.key}
+                  role="tab"
+                  aria-selected={groupBy === g.key}
+                  className={`${styles.tabBtn} ${groupBy === g.key ? styles.tabBtnActive : ''}`}
+                  onClick={() => setGroupBy(g.key)}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+            <HorizontalBars data={groupData} color={activeGroup.color} />
+          </section>
+
+          <div className={styles.chartsGrid}>
+            <section className={styles.section}>
+              <h2 className={styles.sectionTitle}>Playtime by Release Year</h2>
+              <div className={styles.sectionSubtitle}>
+                Hours by the year the game came out · {releaseYearData.newPercent}% of hours on games played within a year of release
+              </div>
+              <div className={styles.chartWrapper}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={releaseYearData.data} margin={{ top: 8, right: 16, left: 0, bottom: 40 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
+                    <XAxis dataKey="year" tick={{ fontSize: 11, fill: '#9aa3b2' }} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
+                    <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={36} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                    <Bar dataKey="hours" fill="#06b6d4" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            <section className={styles.section}>
+              <h2 className={styles.sectionTitle}>Session Length Distribution</h2>
+              <div className={styles.sectionSubtitle}>Number of sessions by length</div>
+              <div className={styles.chartWrapper}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={sessionLengthData} margin={{ top: 8, right: 16, left: 0, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
+                    <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={36} />
+                    <Tooltip content={<CountTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                    <Bar dataKey="sessions" fill="#8b7cf0" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+          </div>
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>When You Play</h2>
+            <div className={styles.sectionSubtitle}>Playtime by weekday and hour of day — darker cells mean more playtime</div>
+            <TimeOfDayHeatmap sessions={filteredSessions} />
+          </section>
 
           {/* <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Gaming Calendar Heatmap</h2>

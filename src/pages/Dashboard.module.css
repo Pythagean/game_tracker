@@ -129,6 +129,9 @@
 /* ---------- Filter bar ---------- */
 
 .filterBar {
+  position: sticky;
+  top: var(--app-nav-height, 56px);
+  z-index: 20;
   background-color: var(--c-panel);
   border: 1px solid var(--c-border-soft);
   border-radius: var(--radius-lg);
@@ -311,6 +314,35 @@
   color: var(--c-text-faint);
 }
 .legendSwatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+/* ---------- Tabs, time-of-day heatmap ---------- */
+
+.tabRow { display: flex; gap: 6px; margin-bottom: 12px; }
+
+.tabBtn {
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-border);
+  background: var(--c-panel-raised);
+  color: var(--c-text-dim);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.tabBtn:hover { border-color: var(--c-accent); color: var(--c-text); }
+.tabBtn:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+.tabBtnActive { background: var(--c-accent-soft); border-color: var(--c-accent); color: var(--c-accent); }
+
+.timeGrid {
+  display: grid;
+  grid-template-columns: 36px repeat(24, minmax(0, 1fr));
+  gap: 3px;
+  align-items: center;
+}
+.timeHourLabel { font-size: 0.6rem; color: var(--c-text-faint); text-align: center; }
+.timeDayLabel { font-size: 0.7rem; color: var(--c-text-dim); }
+.timeCell { height: 24px; border-radius: 3px; }
+.timeNote { margin-top: 10px; font-size: 0.75rem; color: var(--c-text-faint); }
 
 /* ---------- Cover art calendar ---------- */
 
