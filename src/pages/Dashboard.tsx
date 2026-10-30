@@ -26,8 +26,12 @@ interface RawSession {
   game_mode: string
   platform: string | null
   game: string | null
+  cover_url: string | null
   players: string[]
 }
+
+interface DayGame { title: string; cover: string | null; minutes: number }
+interface DayGames { minutes: number; games: DayGame[] }
 
 function formatHours(minutes: number) {
   return (minutes / 60).toFixed(1)
@@ -252,6 +256,109 @@ function PlaytimeCalendar({ year, dayMinutes }: { year: number; dayMinutes: Map<
   )
 }
 
+const MAX_SPLIT_COVERS = 4
+
+/**
+ * A wall-calendar year view where each played day shows the covers of the games
+ * played that day (longest first), split across the cell for up to
+ * MAX_SPLIT_COVERS games, with a +N badge for any beyond that.
+ */
+function CoverCalendar({ year, days }: { year: number; days: Map<string, DayGames> }) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const [hover, setHover] = useState<{ x: number; y: number; date: string; entry: DayGames | undefined } | null>(null)
+
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+  function showHover(e: React.MouseEvent<HTMLDivElement>, date: string, entry: DayGames | undefined) {
+    const wrapper = wrapperRef.current
+    if (!wrapper) return
+    const w = wrapper.getBoundingClientRect()
+    const c = e.currentTarget.getBoundingClientRect()
+    const x = Math.min(Math.max(c.left - w.left + c.width / 2, 100), w.width - 100)
+    setHover({ x, y: c.top - w.top, date, entry })
+  }
+
+  function formatDuration(minutes: number) {
+    const h = Math.floor(minutes / 60)
+    const m = minutes % 60
+    return h > 0 ? `${h}h ${m}m` : `${m}m`
+  }
+
+  return (
+    <div className={styles.coverWrapper} ref={wrapperRef} onMouseLeave={() => setHover(null)}>
+      <div className={styles.coverMonths}>
+        {MONTH_ABBR.map((monthName, m) => {
+          const daysInMonth = new Date(year, m + 1, 0).getDate()
+          const startCol = (new Date(year, m, 1).getDay() + 6) % 7
+          return (
+            <div key={monthName}>
+              <div className={styles.coverMonthTitle}>{monthName}</div>
+              <div className={styles.coverWeekdays}>
+                {WEEKDAY_LETTERS.map((l, i) => <span key={i}>{l}</span>)}
+              </div>
+              <div className={styles.coverDays}>
+                {Array.from({ length: startCol }, (_, i) => <div key={`b${i}`} />)}
+                {Array.from({ length: daysInMonth }, (_, i) => {
+                  const day = i + 1
+                  const date = `${year}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                  const entry = days.get(date)
+                  const shown = entry?.games.slice(0, MAX_SPLIT_COVERS) ?? []
+                  const split = shown.length > 1
+                  const classes = [
+                    styles.coverCell,
+                    entry ? styles.coverCellPlayed : '',
+                    date === todayStr ? styles.coverCellToday : '',
+                  ].join(' ')
+                  return (
+                    <div
+                      key={date}
+                      className={classes}
+                      onMouseEnter={(e) => showHover(e, date, entry)}
+                    >
+                      {shown.length > 0 && (
+                        <div className={`${styles.coverSplit} ${styles[`coverSplit${shown.length}`]}`}>
+                          {shown.map((g) => (
+                            <div key={g.title} className={styles.coverPiece}>
+                              {g.cover ? (
+                                <img src={g.cover.replace(/^\/\//, 'https://')} alt={g.title} loading="lazy" draggable={false} />
+                              ) : (
+                                <span className={styles.coverFallback}>{split ? '' : g.title}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <span className={styles.coverDayNum}>{day}</span>
+                      {entry && entry.games.length > MAX_SPLIT_COVERS && (
+                        <span className={styles.coverBadge}>+{entry.games.length - MAX_SPLIT_COVERS}</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {hover && (
+        <div className={`${styles.tooltip} ${styles.canvasTooltip}`} style={{ left: hover.x, top: hover.y }}>
+          <div className={styles.tooltipLabel}>
+            {new Date(`${hover.date}T00:00:00`).toLocaleDateString('en-AU', { weekday: 'short', month: 'short', day: 'numeric' })}
+          </div>
+          {hover.entry ? (
+            hover.entry.games.map((g) => (
+              <div key={g.title} className={styles.tooltipValue}>{g.title} · {formatDuration(g.minutes)}</div>
+            ))
+          ) : (
+            <div className={styles.tooltipValue}>No sessions</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [rawSessions, setRawSessions] = useState<RawSession[]>([])
   const [loading, setLoading] = useState(true)
@@ -287,7 +394,7 @@ export default function Dashboard() {
           .order('start_date', { ascending: true }),
         supabase.from('players').select('player_id, name'),
         supabase.from('session_player').select('*'),
-        supabase.from('games').select('game_id, title'),
+        supabase.from('games').select('game_id, title, cover_url'),
       ])
 
       if (!mounted) return
@@ -303,8 +410,10 @@ export default function Dashboard() {
       }
 
       const gameMap = new Map<number, string>()
+      const coverMap = new Map<number, string>()
       for (const g of gamesResult.data as any[]) {
         gameMap.set(g.game_id, g.title)
+        if (g.cover_url) coverMap.set(g.game_id, g.cover_url)
       }
 
       const sessionPlayersMap = new Map<number, string[]>()
@@ -321,6 +430,7 @@ export default function Dashboard() {
         game_mode: s.game_mode ?? 'Unknown',
         platform: s.platforms?.name ?? null,
         game: s.game_id ? (gameMap.get(s.game_id) ?? null) : null,
+        cover_url: s.game_id ? (coverMap.get(s.game_id) ?? null) : null,
         players: sessionPlayersMap.get(s.session_id) ?? [],
       }))
 
@@ -476,6 +586,26 @@ export default function Dashboard() {
       map.set(dateStr, (map.get(dateStr) ?? 0) + s.duration_minutes)
     }
     return map
+  }, [filteredSessions])
+
+  // Per-day games (longest-played first) for the cover-art calendar.
+  const dayGamesMap = useMemo(() => {
+    const perDay = new Map<string, Map<string, DayGame>>()
+    for (const s of filteredSessions) {
+      if (!s.start_date || !s.game) continue
+      const dateStr = s.start_date.split('T')[0]
+      if (!perDay.has(dateStr)) perDay.set(dateStr, new Map())
+      const games = perDay.get(dateStr)!
+      const g = games.get(s.game) ?? { title: s.game, cover: s.cover_url, minutes: 0 }
+      g.minutes += s.duration_minutes
+      games.set(s.game, g)
+    }
+    const result = new Map<string, DayGames>()
+    for (const [date, games] of perDay) {
+      const list = Array.from(games.values()).sort((a, b) => b.minutes - a.minutes)
+      result.set(date, { minutes: list.reduce((sum, g) => sum + g.minutes, 0), games: list })
+    }
+    return result
   }, [filteredSessions])
 
   // Cumulative playtime per year, keyed by day-of-year, so each year renders as its
@@ -1006,6 +1136,31 @@ export default function Dashboard() {
               ))}
               <span>More</span>
             </div>
+          </section>
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Cover Art Calendar</h2>
+            <div className={styles.sectionSubtitle}>The games you played each day, shown as covers (up to 4 per day)</div>
+
+            <div className={styles.calendarNav}>
+              <button
+                className={styles.calendarYearBtn}
+                onClick={() => setFilterYear(calendarYear - 1)}
+                aria-label="Previous year"
+              >
+                ‹
+              </button>
+              <span className={styles.calendarYearLabel}>{calendarYear}</span>
+              <button
+                className={styles.calendarYearBtn}
+                onClick={() => setFilterYear(calendarYear + 1)}
+                aria-label="Next year"
+              >
+                ›
+              </button>
+            </div>
+
+            <CoverCalendar year={calendarYear} days={dayGamesMap} />
           </section>
 
           <section className={styles.section}>

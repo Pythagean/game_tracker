@@ -312,6 +312,119 @@
 }
 .legendSwatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 
+/* ---------- Cover art calendar ---------- */
+
+.coverWrapper { position: relative; width: 100%; }
+
+.coverMonths {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 28px 24px;
+}
+
+.coverMonthTitle {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--c-text);
+  margin-bottom: 6px;
+}
+
+.coverWeekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-bottom: 3px;
+  text-align: center;
+  font-size: 0.6rem;
+  color: var(--c-text-faint);
+}
+
+.coverDays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.coverCell {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--c-border-soft);
+}
+
+.coverCellPlayed {
+  box-shadow: 0 0 0 1px var(--c-border);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.coverCellPlayed:hover {
+  transform: scale(1.35);
+  z-index: 3;
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--c-accent);
+}
+
+.coverCellToday { outline: 1.5px solid var(--c-accent-strong); outline-offset: -1.5px; }
+
+.coverSplit {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--c-bg, #000);
+}
+.coverSplit1 { grid-template: 1fr / 1fr; }
+.coverSplit2 { grid-template: 1fr / 1fr 1fr; }
+.coverSplit3 { grid-template: 1fr 1fr / 1fr 1fr; }
+.coverSplit3 .coverPiece:first-child { grid-row: 1 / span 2; }
+.coverSplit4 { grid-template: 1fr 1fr / 1fr 1fr; }
+
+.coverPiece { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+
+.coverCell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.coverFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  font-size: 0.55rem;
+  line-height: 1.2;
+  text-align: center;
+  word-break: break-word;
+  color: var(--c-text-dim);
+  background: var(--c-accent-soft);
+}
+
+.coverDayNum {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  padding: 0 3px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  line-height: 1.3;
+  color: var(--c-text-faint);
+}
+.coverCellPlayed .coverDayNum { color: var(--c-text); background: rgba(0, 0, 0, 0.6); }
+
+.coverBadge {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #1a1206;
+  background: var(--c-accent);
+}
+
 /* ============================================================
    Responsive
    ============================================================ */
