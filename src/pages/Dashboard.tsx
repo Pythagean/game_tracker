@@ -1568,7 +1568,7 @@ export default function Dashboard() {
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Cumulative Playtime by Year</h2>
             <div className={styles.sectionSubtitle}>Total accumulated hours through each day of the year</div>
-            <div className={styles.largeChartWrapper}>
+            <div className={styles.extraLargeChartWrapper}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={cumulativeYearlyData.data} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />

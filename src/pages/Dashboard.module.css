@@ -112,6 +112,7 @@
 .chartWrapper { height: 260px; }
 .gameChartWrapper { height: 700px; }
 .largeChartWrapper { height: 380px; }
+.extraLargeChartWrapper { height: 480px; }
 
 /* ---------- Tooltip (recharts custom content) ---------- */
 
@@ -462,6 +463,7 @@
   .chartsGrid { grid-template-columns: 1fr; }
   .chartWrapper { height: 200px; }
   .largeChartWrapper { height: 280px; }
+  .extraLargeChartWrapper { height: 320px; }
 }
 
 @media (max-width: 600px) {
