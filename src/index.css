@@ -1,10 +1,61 @@
+:root {
+  color-scheme: dark;
+  --c-bg: #11151c;
+  --c-text: #eef1f6;
+}
+
+/*
+ * Light theme. Each page/module defines its own dark --c-* palette on its root
+ * class, so the light palette is applied to every element (specificity beats
+ * those class rules) to override them all from a single place.
+ */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='light'],
+:root[data-theme='light'] * {
+  --c-bg: #f3f5f9;
+  --c-panel: #ffffff;
+  --c-panel-raised: #eef1f6;
+  --c-border: #d3d9e3;
+  --c-border-soft: #e3e7ee;
+  --c-text: #1c2330;
+  --c-text-dim: #566072;
+  --c-text-faint: #8a93a3;
+  --c-accent: #b86e00;
+  --c-accent-strong: #965800;
+  --c-accent-soft: rgba(184, 110, 0, 0.12);
+  --c-accent-contrast: #ffffff;
+  --c-secondary: #6552cc;
+  --c-secondary-soft: rgba(101, 82, 204, 0.12);
+  --c-danger: #d63c45;
+  --c-danger-soft: rgba(214, 60, 69, 0.1);
+  --c-success: #1f8f4e;
+  --c-success-soft: rgba(31, 143, 78, 0.12);
+  --c-nav-bg: rgba(255, 255, 255, 0.92);
+  --c-chart-cursor: rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.06), 0 12px 28px -18px rgba(16, 24, 40, 0.25);
+}
+
 html, body, #root {
   min-height: 100%;
   margin: 0;
-  background: #11151c;
-  color: #eef1f6;
+  background: var(--c-bg);
+  color: var(--c-text);
 }
 
 body {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
+
+/* Recharts: theme-aware colours (CSS beats the inline presentation attributes set in the charts) */
+.recharts-cartesian-axis-tick-value { fill: var(--c-text-dim); }
+.recharts-cartesian-grid line { stroke: var(--c-border); }
+.recharts-tooltip-cursor { fill: var(--c-chart-cursor, rgba(255, 255, 255, 0.05)); }
+.recharts-default-tooltip {
+  background-color: var(--c-panel-raised) !important;
+  border-color: var(--c-border) !important;
+}
+.recharts-tooltip-label { color: var(--c-text-dim) !important; }
+.recharts-tooltip-item { color: var(--c-text) !important; }

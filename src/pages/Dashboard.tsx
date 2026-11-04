@@ -1,12 +1,11 @@
-import { useEffect, useState, useMemo, useRef, Fragment } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { supabase, FIXED_USER_ID } from '@/lib/supabase'
+import { useTheme } from '@/lib/theme'
 import {
   BarChart,
   Bar,
   LineChart,
   Line,
-  PieChart,
-  Pie,
   Cell,
   XAxis,
   YAxis,
@@ -76,10 +75,40 @@ const MONTH_ORDER = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December']
 const COLORS = ['#6366f1', '#8b7cf0', '#ec4899', '#f2a541', '#10b981', '#06b6d4', '#3b82f6', '#ef4444']
 
+// Brand-inspired colours per platform; first matching pattern wins (order matters).
+const PLATFORM_COLORS: [RegExp, string][] = [
+  [/switch\s*2/i, '#9a1b1b'],
+  [/switch/i, '#ed2233'],
+  [/nintendo\s*64|^n64$/i, '#2e9e44'],
+  [/vita/i, '#5aa9e6'],
+  [/(ps|playstation)\s*3/i, '#1d4ed8'],
+  [/(ps|playstation)\s*5/i, '#7dd3fc'],
+  [/\b(ps|playstation)\s*\d?\b/i, '#0070d1'],
+  [/xbox/i, '#107c10'],
+  [/oculus|rift|quest/i, '#9ca3af'],
+  [/retro\s*pi|raspberry/i, '#c51a4a'],
+  [/^pc$|steam|windows/i, '#64748b'],
+]
+
+const platformColor = (name: string): string | undefined =>
+  PLATFORM_COLORS.find(([pattern]) => pattern.test(name))?.[1]
+
+const shortGameMode = (mode: string): string =>
+  ({ 'Online Multiplayer': 'Online MP', 'Local Multiplayer': 'Local MP' })[mode] ?? mode
+
+const shortPlatformName = (name: string): string =>
+  name
+    .trim()
+    .replace(/^playstation\s*/i, 'PS')
+    .replace(/^nintendo\s*64$/i, 'N64')
+    .replace(/^nintendo\s+/i, '')
+    .replace(/^oculus\s+rift$/i, 'Oculus')
+
 // Same amber ramp used by the GitHub-style heatmap above, so the two calendar
 // visualizations on this page read as one consistent "intensity" language.
 // Index 0 = no playtime that day, 1-5 = increasing intensity.
-const HEATMAP_COLORS = ['#232a36', '#3a2a14', '#5c4118', '#8a5f1d', '#c08526', '#f2a541']
+const HEATMAP_COLORS_DARK = ['#232a36', '#3a2a14', '#5c4118', '#8a5f1d', '#c08526', '#f2a541']
+const HEATMAP_COLORS_LIGHT = ['#e3e7ee', '#fde7c2', '#f9cd82', '#f2a541', '#d98a12', '#b86e00']
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const WEEKDAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
@@ -186,6 +215,9 @@ interface CalendarCell { x: number; y: number; w: number; h: number; date: strin
  * an actual wall calendar.
  */
 function PlaytimeCalendar({ year, dayMinutes }: { year: number; dayMinutes: Map<string, number> }) {
+  const [theme] = useTheme()
+  const isLight = theme === 'light'
+  const heatmapColors = isLight ? HEATMAP_COLORS_LIGHT : HEATMAP_COLORS_DARK
   const wrapperRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const cellsRef = useRef<CalendarCell[]>([])
@@ -247,14 +279,14 @@ function PlaytimeCalendar({ year, dayMinutes }: { year: number; dayMinutes: Map<
 
       // Month label
       ctx.font = '600 11px system-ui, -apple-system, sans-serif'
-      ctx.fillStyle = '#eef1f6' // --c-text
+      ctx.fillStyle = isLight ? '#1c2330' : '#eef1f6' // --c-text
       ctx.textAlign = 'left'
       ctx.textBaseline = 'top'
       ctx.fillText(MONTH_ABBR[m], gx, gy)
 
       // Weekday header letters (Monday-first, matching the rest of the dashboard)
       ctx.font = '500 9px system-ui, -apple-system, sans-serif'
-      ctx.fillStyle = '#5d6675' // --c-text-faint
+      ctx.fillStyle = isLight ? '#8a93a3' : '#5d6675' // --c-text-faint
       ctx.textAlign = 'center'
       for (let wd = 0; wd < 7; wd++) {
         const x = gx + wd * (cell + cellGap) + cell / 2
@@ -275,19 +307,20 @@ function PlaytimeCalendar({ year, dayMinutes }: { year: number; dayMinutes: Map<
         const minutes = dayMinutes.get(dateStr) ?? 0
         const level = intensityForMinutes(minutes)
 
-        ctx.fillStyle = HEATMAP_COLORS[level]
+        ctx.fillStyle = heatmapColors[level]
         roundedRectPath(ctx, cx, cy, cell, cell, 2)
         ctx.fill()
 
         if (isCurrentYear && m === today.getMonth() && day === today.getDate()) {
-          ctx.strokeStyle = '#ffc46b' // --c-accent-strong
+          ctx.strokeStyle = isLight ? '#965800' : '#ffc46b' // --c-accent-strong
           ctx.lineWidth = 1.5
           roundedRectPath(ctx, cx + 0.75, cy + 0.75, cell - 1.5, cell - 1.5, 2)
           ctx.stroke()
         }
 
         ctx.font = `${Math.max(7, Math.floor(cell * 0.55))}px system-ui, -apple-system, sans-serif`
-        ctx.fillStyle = level >= 4 ? '#1a1206' : '#7d8696' // dark text on bright cells, muted otherwise
+        // dark text on bright cells, muted otherwise
+        ctx.fillStyle = level >= (isLight ? 3 : 4) ? (isLight && level === 5 ? '#ffffff' : '#1a1206') : isLight ? '#566072' : '#7d8696'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
         ctx.fillText(String(day), cx + cell / 2, cy + cell / 2 + 0.5)
@@ -297,7 +330,7 @@ function PlaytimeCalendar({ year, dayMinutes }: { year: number; dayMinutes: Map<
     }
 
     cellsRef.current = cells
-  }, [containerWidth, year, dayMinutes])
+  }, [containerWidth, year, dayMinutes, isLight, heatmapColors])
 
   function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current
@@ -344,12 +377,16 @@ function PlaytimeCalendar({ year, dayMinutes }: { year: number; dayMinutes: Map<
 }
 
 /**
- * Weekday x hour-of-day heatmap of playtime. A session's minutes are spread across
- * the hours it spans (rolling into the next weekday past midnight). Sessions with
- * no recorded start time can't be placed and are excluded.
+ * Hour-of-day line chart of playtime, for all days combined or any chosen weekdays
+ * overlaid. A session's minutes are spread across the hours it spans (rolling into
+ * the next weekday past midnight). Sessions with no recorded start time can't be
+ * placed and are excluded.
  */
-function TimeOfDayHeatmap({ sessions }: { sessions: RawSession[] }) {
-  const { grid, max, unplaced } = useMemo(() => {
+function TimeOfDayChart({ sessions }: { sessions: RawSession[] }) {
+  // Empty selection means "all days combined".
+  const [selectedDays, setSelectedDays] = useState<number[]>([])
+
+  const { data, unplaced } = useMemo(() => {
     const grid = Array.from({ length: 7 }, () => new Array<number>(24).fill(0))
     let unplaced = 0
     for (const s of sessions) {
@@ -367,45 +404,78 @@ function TimeOfDayHeatmap({ sessions }: { sessions: RawSession[] }) {
         if (cursor >= 1440) { cursor = 0; day = (day + 1) % 7 }
       }
     }
-    return { grid, max: Math.max(...grid.flat()), unplaced }
+    const data = Array.from({ length: 24 }, (_, hour) => {
+      const row: Record<string, number> = { hour, all: 0 }
+      for (let d = 0; d < 7; d++) {
+        row[`d${d}`] = parseFloat(formatHours(grid[d][hour]))
+        row.all += grid[d][hour]
+      }
+      row.all = parseFloat(formatHours(row.all))
+      return row
+    })
+    return { data, unplaced }
   }, [sessions])
 
-  function formatDuration(minutes: number) {
-    const h = Math.floor(minutes / 60)
-    const m = Math.round(minutes % 60)
-    return h > 0 ? `${h}h ${m}m` : `${m}m`
+  function toggleDay(d: number) {
+    setSelectedDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()))
   }
+
+  const showAll = selectedDays.length === 0
 
   return (
     <div>
-      <div className={styles.timeGrid}>
-        <span />
-        {Array.from({ length: 24 }, (_, h) => (
-          <span key={h} className={styles.timeHourLabel}>{h % 3 === 0 ? h : ''}</span>
-        ))}
-        {WEEKDAY_ORDER.map((weekday, d) => (
-          <Fragment key={weekday}>
-            <span className={styles.timeDayLabel}>{weekday.slice(0, 3)}</span>
-            {grid[d].map((minutes, h) => {
-              const level = max > 0 && minutes > 0 ? Math.max(1, Math.ceil((minutes / max) * 5)) : 0
-              return (
-                <span
-                  key={h}
-                  className={styles.timeCell}
-                  style={{ background: HEATMAP_COLORS[level] }}
-                  title={`${weekday} ${String(h).padStart(2, '0')}:00 — ${minutes > 0 ? formatDuration(minutes) : 'no play'}`}
-                />
-              )
-            })}
-          </Fragment>
-        ))}
+      <div className={styles.tabRow}>
+        <button
+          className={`${styles.tabBtn} ${showAll ? styles.tabBtnActive : ''}`}
+          aria-pressed={showAll}
+          onClick={() => setSelectedDays([])}
+        >
+          All days
+        </button>
+        {WEEKDAY_ORDER.map((weekday, d) => {
+          const active = selectedDays.includes(d)
+          return (
+            <button
+              key={weekday}
+              className={`${styles.tabBtn} ${active ? styles.tabBtnActive : ''}`}
+              style={active ? { borderColor: COLORS[d], color: COLORS[d], background: 'transparent' } : undefined}
+              aria-pressed={active}
+              onClick={() => toggleDay(d)}
+            >
+              {weekday.slice(0, 3)}
+            </button>
+          )
+        })}
       </div>
-      <div className={styles.calendarLegend}>
-        <span>Less</span>
-        {HEATMAP_COLORS.map((c, i) => (
-          <span key={i} className={styles.legendSwatch} style={{ background: c }} />
-        ))}
-        <span>More</span>
+      <div className={styles.largeChartWrapper}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
+            <XAxis
+              dataKey="hour"
+              interval={0}
+              tick={{ fontSize: 11, fill: '#9aa3b2' }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(h) => `${String(h).padStart(2, '0')}`}
+            />
+            <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={36} />
+            <Tooltip
+              formatter={(value: any) => `${value}h`}
+              labelFormatter={(h) => `${String(h).padStart(2, '0')}:00`}
+              contentStyle={{ background: '#232b38', border: '1px solid #2c3442', borderRadius: 8, color: '#eef1f6' }}
+              itemStyle={{ color: '#eef1f6' }}
+              labelStyle={{ color: '#9aa3b2' }}
+            />
+            {showAll ? (
+              <Line dataKey="all" name="All days" stroke="#f2a541" strokeWidth={2.5} dot={false} />
+            ) : (
+              selectedDays.map((d) => (
+                <Line key={d} dataKey={`d${d}`} name={WEEKDAY_ORDER[d]} stroke={COLORS[d]} strokeWidth={2} dot={false} />
+              ))
+            )}
+          </LineChart>
+        </ResponsiveContainer>
       </div>
       {unplaced > 0 && (
         <div className={styles.timeNote}>{unplaced} session{unplaced === 1 ? '' : 's'} without a start time not shown</div>
@@ -518,6 +588,7 @@ function CoverCalendar({ year, days }: { year: number; days: Map<string, DayGame
 }
 
 export default function Dashboard() {
+  const [theme] = useTheme()
   const [rawSessions, setRawSessions] = useState<RawSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -700,6 +771,17 @@ export default function Dashboard() {
       .map(([month, minutes]) => ({ month, hours: parseFloat(formatHours(minutes)), minutes }))
   }, [filteredSessions])
 
+  const yearlyData = useMemo(() => {
+    const map = new Map<number, number>()
+    for (const s of filteredSessions) {
+      const year = new Date(s.start_date).getFullYear()
+      map.set(year, (map.get(year) ?? 0) + s.duration_minutes)
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([year, minutes]) => ({ month: String(year), hours: parseFloat(formatHours(minutes)), minutes }))
+  }, [filteredSessions])
+
   const weekdayData = useMemo(() => {
     const map = new Map<string, number>()
     for (const s of filteredSessions) {
@@ -725,12 +807,15 @@ export default function Dashboard() {
   const platformData = useMemo(() => {
     const map = new Map<string, number>()
     for (const s of filteredSessions) {
-      if (s.platform) map.set(s.platform, (map.get(s.platform) ?? 0) + s.duration_minutes)
+      if (s.platform) {
+        const name = shortPlatformName(s.platform)
+        map.set(name, (map.get(name) ?? 0) + s.duration_minutes)
+      }
     }
     return Array.from(map.entries())
       .sort((a, b) => b[1] - a[1])
       .map(([name, minutes], index) => ({
-        name, value: parseFloat(formatHours(minutes)), minutes, fill: COLORS[index % COLORS.length],
+        name, hours: parseFloat(formatHours(minutes)), minutes, fill: platformColor(name) ?? COLORS[index % COLORS.length],
       }))
   }, [filteredSessions])
 
@@ -745,6 +830,14 @@ export default function Dashboard() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
       .map(([name, minutes]) => ({ name, hours: parseFloat(formatHours(minutes)), minutes }))
+  }, [filteredSessions])
+
+  const gameCovers = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const s of filteredSessions) {
+      if (s.game && s.cover_url && !map.has(s.game)) map.set(s.game, s.cover_url)
+    }
+    return map
   }, [filteredSessions])
 
   const playedWithData = useMemo(() => {
@@ -1071,11 +1164,9 @@ export default function Dashboard() {
             <div className={styles.kpiValue}>
               {Math.round(kpis.totalMinutes / 60)}h
             </div>
-            {filterYear !== 'all' && (
-              <div className={styles.kpiSubValue}>
-                (avg {Math.round(datasetAverages.avgTotalMinutesPerYear / 60)}h/yr)
-              </div>
-            )}
+            <div className={styles.kpiSubValue}>
+              (avg {Math.round(datasetAverages.avgTotalMinutesPerYear / 60)}h/yr)
+            </div>
           </div>
 
           <div className={`${styles.kpiCard} ${styles.kpiViolet}`}>
@@ -1085,11 +1176,9 @@ export default function Dashboard() {
             <div className={styles.kpiValue}>
               {kpis.numSessions}
             </div>
-            {filterYear !== 'all' && (
-              <div className={styles.kpiSubValue}>
-                (avg {Math.round(datasetAverages.avgSessionsPerYear)}/yr)
-              </div>
-            )}
+            <div className={styles.kpiSubValue}>
+              (avg {Math.round(datasetAverages.avgSessionsPerYear)}/yr)
+            </div>
           </div>
 
           <div className={`${styles.kpiCard} ${styles.kpiPink}`}>
@@ -1099,11 +1188,9 @@ export default function Dashboard() {
             <div className={styles.kpiValue}>
               {kpis.uniqueGames}
             </div>
-            {filterYear !== 'all' && (
-              <div className={styles.kpiSubValue}>
-                (avg {Math.round(datasetAverages.avgUniqueGamesPerYear)}/yr)
-              </div>
-            )}
+            <div className={styles.kpiSubValue}>
+              (avg {Math.round(datasetAverages.avgUniqueGamesPerYear)}/yr)
+            </div>
           </div>
 
           <div className={`${styles.kpiCard} ${styles.kpiAmber}`}>
@@ -1113,11 +1200,9 @@ export default function Dashboard() {
             <div className={styles.kpiValue}>
               {Math.floor(kpis.avgSessionMinutes / 60)}h {kpis.avgSessionMinutes % 60}m
             </div>
-            {filterYear !== 'all' && (
-              <div className={styles.kpiSubValue}>
-                (avg {Math.floor(datasetAverages.avgSessionMinutes / 60)}h {Math.round(datasetAverages.avgSessionMinutes % 60)}m overall)
-              </div>
-            )}
+            <div className={styles.kpiSubValue}>
+              (avg {Math.floor(datasetAverages.avgSessionMinutes / 60)}h {Math.round(datasetAverages.avgSessionMinutes % 60)}m overall)
+            </div>
           </div>
 
           <div className={`${styles.kpiCard} ${styles.kpiGreen}`}>
@@ -1127,11 +1212,9 @@ export default function Dashboard() {
             <div className={styles.kpiValue}>
               {kpis.uniqueDays}/{kpis.totalDaysInPeriod} ({kpis.daysPercentage}%)
             </div>
-            {filterYear !== 'all' && (
-              <div className={styles.kpiSubValue}>
-                (avg {Math.round(datasetAverages.avgUniqueDaysPerYear)} days/yr)
-              </div>
-            )}
+            <div className={styles.kpiSubValue}>
+              (avg {Math.round(datasetAverages.avgUniqueDaysPerYear)} days/yr)
+            </div>
           </div>
         </div>
       )}
@@ -1142,16 +1225,16 @@ export default function Dashboard() {
       {!loading && !error && (
         <>
           <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>Monthly Playtime</h2>
-            <div className={styles.sectionSubtitle}>Hours played per month</div>
+            <h2 className={styles.sectionTitle}>{filterYear === 'all' ? 'Yearly Playtime' : 'Monthly Playtime'}</h2>
+            <div className={styles.sectionSubtitle}>{filterYear === 'all' ? 'Hours played per year' : 'Hours played per month'}</div>
             <div className={styles.largeChartWrapper}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyData} margin={{ top: 8, right: 16, left: 0, bottom: 60 }}>
+                <BarChart data={filterYear === 'all' ? yearlyData : monthlyData} margin={{ top: 8, right: 16, left: 0, bottom: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9aa3b2' }} angle={-45} textAnchor="end" interval={0} tickLine={false} axisLine={false} />
                   <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={36} />
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                  <Bar dataKey="hours" fill="#6366f1" radius={[3, 3, 0, 0]} maxBarSize={filterYear === 'all' ? 40 : 80} />
+                  <Bar dataKey="hours" fill="#6366f1" radius={[3, 3, 0, 0]} maxBarSize={filterYear === 'all' ? 140 : 80} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1181,15 +1264,42 @@ export default function Dashboard() {
                 <BarChart
                   layout="vertical"
                   data={gameData}
-                  margin={{ top: 8, right: 16, left: 40, bottom: 8 }}
+                  margin={{ top: 8, right: 16, left: 8, bottom: 8 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#2c3442" />
                   <XAxis type="number" tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} />
                   <YAxis
                     type="category"
                     dataKey="name"
-                    width={60}
-                    tick={{ fontSize: 11, fill: '#9aa3b2' }}
+                    width={64}
+                    interval={0}
+                    tick={(props: any) => {
+                      const { x, y, payload } = props
+                      const cover = gameCovers.get(payload.value)
+                      const w = 45
+                      const h = 60
+                      return cover ? (
+                        <g>
+                          <title>{payload.value}</title>
+                          <clipPath id={`game-cover-clip-${payload.index}`}>
+                            <rect x={x - w - 4} y={y - h / 2} width={w} height={h} rx={5} ry={5} />
+                          </clipPath>
+                          <image
+                            href={cover.replace(/^\/\//, 'https://')}
+                            x={x - w - 4}
+                            y={y - h / 2}
+                            width={w}
+                            height={h}
+                            preserveAspectRatio="xMidYMid slice"
+                            clipPath={`url(#game-cover-clip-${payload.index})`}
+                          />
+                        </g>
+                      ) : (
+                        <text x={x - 4} y={y} textAnchor="end" dominantBaseline="middle" fontSize={10} fill="var(--c-text-dim)">
+                          {String(payload.value).length > 10 ? `${String(payload.value).slice(0, 9)}…` : payload.value}
+                        </text>
+                      )
+                    }}
                     tickLine={false}
                     axisLine={false}
                   />
@@ -1208,7 +1318,7 @@ export default function Dashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={weekdayData} margin={{ top: 8, right: 16, left: 0, bottom: 40 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
-                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9aa3b2' }} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
+                    <XAxis dataKey="day" tickFormatter={(d: string) => d.slice(0, 3)} tick={{ fontSize: 11, fill: '#9aa3b2' }} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
                     <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={36} />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
                     <Bar dataKey="hours" fill="#8b7cf0" radius={[3, 3, 0, 0]} />
@@ -1224,7 +1334,7 @@ export default function Dashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={gameModeData} margin={{ top: 8, right: 16, left: 0, bottom: 40 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9aa3b2' }} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
+                    <XAxis dataKey="name" tickFormatter={shortGameMode} tick={{ fontSize: 11, fill: '#9aa3b2' }} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
                     <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={36} />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
                     <Bar dataKey="hours" fill="#ec4899" radius={[3, 3, 0, 0]} />
@@ -1240,38 +1350,29 @@ export default function Dashboard() {
               <div className={styles.sectionSubtitle}>Hours played per platform</div>
               <div className={styles.chartWrapper}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-                    <Pie
-                      data={platformData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={(entry: any) => entry.name}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
+                  <BarChart data={platformData} margin={{ top: 8, right: 16, left: 0, bottom: 40 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9aa3b2' }} angle={-45} textAnchor="end" interval={0} tickLine={false} axisLine={false} />
+                    <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={36} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                    <Bar dataKey="hours" radius={[3, 3, 0, 0]}>
                       {platformData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: any) => `${value}h`}
-                      contentStyle={{ background: '#232b38', border: '1px solid #2c3442', borderRadius: 8, color: '#eef1f6' }}
-                      itemStyle={{ color: '#eef1f6' }}
-                      labelStyle={{ color: '#eef1f6' }}
-                    />
-                  </PieChart>
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </section>
 
             <section className={styles.section}>
               <h2 className={styles.sectionTitle}>Playtime by Played With</h2>
-              <div className={styles.sectionSubtitle}>Hours played with each person</div>
+              <div className={styles.sectionSubtitle}>
+                {filterYear === 'all' ? 'Hours played with each person (Top 10)' : 'Hours played with each person'}
+              </div>
               <div className={styles.chartWrapper}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={playedWithData} margin={{ top: 8, right: 16, left: 0, bottom: 40 }}>
+                  <BarChart data={filterYear === 'all' ? playedWithData.slice(0, 10) : playedWithData} margin={{ top: 8, right: 16, left: 0, bottom: 40 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2c3442" />
                     <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9aa3b2' }} angle={-45} textAnchor="end" tickLine={false} axisLine={false} />
                     <YAxis tickFormatter={(v) => `${v}h`} tick={{ fontSize: 11, fill: '#9aa3b2' }} tickLine={false} axisLine={false} width={36} />
@@ -1284,8 +1385,32 @@ export default function Dashboard() {
           </div>
 
           <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Cover Art Calendar</h2>
+
+            <div className={styles.calendarNav}>
+              <button
+                className={styles.calendarYearBtn}
+                onClick={() => setFilterYear(calendarYear - 1)}
+                aria-label="Previous year"
+              >
+                ‹
+              </button>
+              <span className={styles.calendarYearLabel}>{calendarYear}</span>
+              <button
+                className={styles.calendarYearBtn}
+                onClick={() => setFilterYear(calendarYear + 1)}
+                aria-label="Next year"
+              >
+                ›
+              </button>
+            </div>
+
+            <CoverCalendar year={calendarYear} days={dayGamesMap} />
+          </section>
+
+          <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Playtime by {activeGroup.label}</h2>
-            <div className={styles.sectionSubtitle}>Top 10 — {activeGroup.note}</div>
+            <div className={styles.sectionSubtitle}>Top 10 - {activeGroup.note}</div>
             <div className={styles.tabRow} role="tablist">
               {GROUP_OPTIONS.map((g) => (
                 <button
@@ -1340,8 +1465,8 @@ export default function Dashboard() {
 
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>When You Play</h2>
-            <div className={styles.sectionSubtitle}>Playtime by weekday and hour of day — darker cells mean more playtime</div>
-            <TimeOfDayHeatmap sessions={filteredSessions} />
+            <div className={styles.sectionSubtitle}>Hours played at each hour of the day — pick weekdays to compare them</div>
+            <TimeOfDayChart sessions={filteredSessions} />
           </section>
 
           {/* <section className={styles.section}>
@@ -1431,37 +1556,14 @@ export default function Dashboard() {
 
             <div className={styles.calendarLegend}>
               <span>Less</span>
-              {HEATMAP_COLORS.map((c, i) => (
+              {(theme === 'light' ? HEATMAP_COLORS_LIGHT : HEATMAP_COLORS_DARK).map((c, i) => (
                 <span key={i} className={styles.legendSwatch} style={{ background: c }} />
               ))}
               <span>More</span>
             </div>
           </section>
 
-          <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>Cover Art Calendar</h2>
-            <div className={styles.sectionSubtitle}>The games you played each day, shown as covers (up to 4 per day)</div>
-
-            <div className={styles.calendarNav}>
-              <button
-                className={styles.calendarYearBtn}
-                onClick={() => setFilterYear(calendarYear - 1)}
-                aria-label="Previous year"
-              >
-                ‹
-              </button>
-              <span className={styles.calendarYearLabel}>{calendarYear}</span>
-              <button
-                className={styles.calendarYearBtn}
-                onClick={() => setFilterYear(calendarYear + 1)}
-                aria-label="Next year"
-              >
-                ›
-              </button>
-            </div>
-
-            <CoverCalendar year={calendarYear} days={dayGamesMap} />
-          </section>
+          
 
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Cumulative Playtime by Year</h2>
@@ -1494,7 +1596,7 @@ export default function Dashboard() {
                       setHighlightedYear((prev) => (prev === y ? null : y))
                     }}
                     formatter={(value: string) => (
-                      <span style={{ color: highlightedYear === null || highlightedYear === Number(value) ? '#eef1f6' : '#5d6675' }}>
+                      <span style={{ color: highlightedYear === null || highlightedYear === Number(value) ? 'var(--c-text)' : 'var(--c-text-faint)' }}>
                         {value}
                       </span>
                     )}
